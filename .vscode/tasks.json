@@ -6,20 +6,20 @@
       "type": "shell",
       "command": "bun run dev",
       "group": "build",
-      "problemMatcher": []
-      // "runOptions": {
-      //   "runOn": "folderOpen"
-      // }
+      "problemMatcher": [],
+      "runOptions": {
+        "runOn": "folderOpen"
+      }
     },
     {
       "label": "Start Docker DB",
       "type": "shell",
       "command": "docker compose -f docker-compose.yml up",
       "group": "build",
-      "problemMatcher": []
-      // "runOptions": {
-      //   "runOn": "folderOpen"
-      // }
+      "problemMatcher": [],
+      "runOptions": {
+        "runOn": "folderOpen"
+      }
     }
   ]
 }
