@@ -8,9 +8,18 @@ export type Variables = {
   session: AuthType["session"];
 };
 
+declare module "hono" {
+  interface ContextVariableMap {
+    user: Variables["user"];
+    session: Variables["session"];
+    token: string;
+  }
+}
 
 export const authMiddleware = createMiddleware<{ Variables: Variables }>(
   async (c, next) => {
+    const token = c.req.header("Authorization")?.replace("Bearer ", "");
+
     const session = await auth.api.getSession({
       headers: c.req.raw.headers,
     });

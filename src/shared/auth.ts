@@ -4,7 +4,8 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 
 import prisma from "@shared/primsa";
 import { generateOtp } from "@utils/random";
-import { OTP_LENGTH } from "./constants";
+import { OTP_LENGTH } from "@shared/constants";
+import sendEmail from "@utils/email";
 // import env from '@/shared/env'
 
 export const auth = betterAuth({
@@ -14,7 +15,11 @@ export const auth = betterAuth({
   // Allow requests from the frontend development server
   trustedOrigins: ["http://localhost:5173"],
   emailAndPassword: {
-    enabled: true,
+    enabled: false,
+    autoSignIn: false,
+  },
+  emailVerification: {
+    autoSignInAfterVerification: true,
   },
   plugins: [
     jwt(),
@@ -32,10 +37,9 @@ export const auth = betterAuth({
         if (process.env.NODE_ENV === "development") {
           console.log(`Sending ${type} OTP to ${email}: ${otp}`);
         } else {
-          // Implement your email sending logic here
+          await sendEmail(email, otp);
         }
       },
-      disableSignUp: process.env.NODE_ENV === "production" ? true : false,
     }),
   ],
   //   socialProviders: {
