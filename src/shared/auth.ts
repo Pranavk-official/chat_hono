@@ -1,8 +1,10 @@
 import { betterAuth } from "better-auth";
-import { jwt, openAPI } from "better-auth/plugins";
+import { jwt, openAPI, emailOTP } from "better-auth/plugins";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 
 import prisma from "@shared/primsa";
+import { generateOtp } from "@utils/random";
+import { OTP_LENGTH } from "./constants";
 // import env from '@/shared/env'
 
 export const auth = betterAuth({
@@ -14,7 +16,28 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
-  plugins: [jwt(), openAPI()],
+  plugins: [
+    jwt(),
+    openAPI(),
+    emailOTP({
+      otpLength: OTP_LENGTH,
+      expiresIn: 600,
+      generateOTP() {
+        return process.env.NODE_ENV === "development"
+          ? "123456"
+          : generateOtp(OTP_LENGTH);
+      },
+      async sendVerificationOTP({ email, otp, type }) {
+        // Implement your email sending logic here
+        if (process.env.NODE_ENV === "development") {
+          console.log(`Sending ${type} OTP to ${email}: ${otp}`);
+        } else {
+          // Implement your email sending logic here
+        }
+      },
+      disableSignUp: process.env.NODE_ENV === "production" ? true : false,
+    }),
+  ],
   //   socialProviders: {
   //     github: {
   //       clientId: env.GITHUB_CLIENT_ID,
