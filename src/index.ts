@@ -14,5 +14,11 @@ app.get("/", (c) => {
 // Auth routes
 app.route("/api/", auth_routes);
 app.use(authMiddleware);
+app.get("/api/protected", async (c) => {
+  const user = c.get("user");
+  return c.text(
+    "This is a protected route" + (user ? `, welcome ${user.email}!` : "")
+  );
+});
 
 export default app;
