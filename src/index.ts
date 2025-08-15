@@ -13,7 +13,6 @@ app.get("/", (c) => {
 
 // Auth routes
 app.route("/api/", auth_routes);
-app.use(authMiddleware)
-
+app.use(authMiddleware);
 
 export default app;
