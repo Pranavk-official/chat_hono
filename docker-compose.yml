@@ -13,5 +13,11 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
 
+  redis:
+    image: redis:latest
+    container_name: chat_app_redis
+    ports:
+      - "6379:6379" # Expose on port 6379
+
 volumes:
   db_data:
