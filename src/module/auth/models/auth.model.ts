@@ -4,6 +4,7 @@ export const scopeEnum = z.enum(["SIGNUP", "LOGIN"]);
 
 export const generateOtpSchema = z.object({
   email: z.email(),
+  scope: scopeEnum,
 });
 
 export const verifySignupSchema = z.object({

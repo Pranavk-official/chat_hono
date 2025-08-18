@@ -29,7 +29,6 @@ export const generateOtpService = async (body: {
   email: string;
   scope: ScopeEnumType;
 }) => {
-  generateOtpSchema.parse(body);
   const { email, scope } = body;
   const expiresAt = new Date(Date.now() + OTP_EXPIRATION_TIME);
   const otp =
@@ -71,7 +70,6 @@ export const generateOtpService = async (body: {
     identifier: email,
     expiresAt,
     success: true,
-    message: `OTP sent successfully for ${scope.toLowerCase()}`,
   };
 };
 
@@ -117,7 +115,6 @@ export const createUserService = async ({
   email: string;
   name: string;
 }) => {
-  verifySignupSchema.pick({ email: true, name: true }).parse({ email, name });
   const existingUser = await prisma.user.findUnique({ where: { email } });
   if (existingUser) {
     throw new BadRequestError("User with this email already exists");

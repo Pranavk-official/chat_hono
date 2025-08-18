@@ -94,17 +94,42 @@ model GroupMember {
 }
 
 model Message {
-  id        String      @id @default(cuid())
-  content   String
-  type      MessageType @default(TEXT)
-  senderId  String
-  groupId   String
-  group     Group       @relation(fields: [groupId], references: [id])
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-  user      User?       @relation(fields: [userId], references: [id])
-  userId    String?
+  id      String      @id @default(cuid())
+  content String
+  type    MessageType @default(TEXT)
 
+  userId   String?
+  senderId String
+  groupId  String
+
+  replyToId String?
+  replyTo   Message?  @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: Cascade)
+  replies   Message[] @relation("MessageReplies")
+
+  user        User?        @relation(fields: [userId], references: [id])
+  group       Group        @relation(fields: [groupId], references: [id])
+  attachments Attachment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@schema("user")
+}
+
+model Attachment {
+  id         String   @id @default(cuid())
+  url        String
+  filename   String?
+  mimeType   String?
+  size       Int?
+  metadata   Json? // arbitrary JSON metadata (uploader info, thumbnails, etc.)
+  messageId  String
+  message    Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  uploadedBy String? // optional user id who uploaded the attachment
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("attachment")
   @@schema("user")
 }
 

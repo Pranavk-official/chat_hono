@@ -22,17 +22,24 @@ import { otpRateLimiter } from "@middleware/auth";
 
 const app = new Hono();
 
-app.post("/generate-otp", otpRateLimiter, async (c) => {
-  const body = await c.req.json();
-  generateOtpSchema.parse(body);
-  const { email } = body;
-  const { expiresAt, message } = await generateOtpService(body);
-  const response = responder(
-    { email, expiresAt: expiresAt.toISOString() },
-    { path: c.req.path, message }
-  );
-  return c.json(response, 200);
-});
+app.post(
+  "/generate-otp",
+  otpRateLimiter,
+  zValidator("json", generateOtpSchema),
+  async (c) => {
+    const body = await c.req.json();
+    const { email } = body;
+    const { expiresAt } = await generateOtpService(body);
+    const response = responder(
+      { email, expiresAt: expiresAt.toISOString() },
+      {
+        path: c.req.path,
+        message: `OTP sent successfully for ${email.toLowerCase()}`,
+      }
+    );
+    return c.json(response, 200);
+  }
+);
 
 app.post("/signup", zValidator("json", verifySignupSchema), async (c) => {
   const { otp, email, name } = c.req.valid("json");
