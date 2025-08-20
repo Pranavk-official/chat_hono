@@ -46,7 +46,7 @@ app.post("/signup", zValidator("json", verifySignupSchema), async (c) => {
   await verifyOtpService({ email: email, otp, scope: "SIGNUP" });
   const user = await createUserService({ email, name });
   const tokens = await generateTokensService(user);
-  await createUserSession(user.id, tokens.accessToken);
+  await createUserSession(user.id, tokens.refreshToken);
   const response = responder(
     {
       user: {
@@ -69,7 +69,7 @@ app.post("/login", zValidator("json", loginSchema), async (c) => {
   await verifyOtpService({ email: identifier, otp, scope: "LOGIN" });
   const user = await getUserByEmail(identifier);
   const tokens = await generateTokensService(user!);
-  await createUserSession(user!.id, tokens.accessToken);
+  await createUserSession(user!.id, tokens.refreshToken);
   const response = responder(
     {
       user: {
@@ -103,9 +103,9 @@ app.post(
   }
 );
 
-app.post("/logout", async (c) => {
-  const token = c.req.header("Authorization")?.split(" ")[1]; // Bearer token format
-  await removeUserSession(token!);
+app.post("/logout", zValidator("json", refreshTokenSchema), async (c) => {
+  const { refreshToken } = c.req.valid("json");
+  await removeUserSession(refreshToken);
   const response = responder(
     {},
     { path: c.req.path, message: "Logged out successfully" }

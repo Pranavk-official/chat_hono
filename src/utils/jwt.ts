@@ -6,7 +6,7 @@ const PRIVATE_KEY_PATH = process.env.PRIVATE_KEY_PATH || "private.key";
 const PUBLIC_KEY_PATH = process.env.PUBLIC_KEY_PATH || "public.key";
 
 export interface JwtPayload {
-  userId: string;
+  id: string;
   email?: string;
   emailVerified: boolean;
   type: "access" | "refresh";
@@ -86,7 +86,7 @@ export const refreshAccessToken = (refreshToken: string): string => {
 
     // Generate a new access token
     const newAccessToken = generateAuthToken({
-      userId: decoded.userId,
+      id: decoded.id,
       email: decoded.email,
       emailVerified: decoded.emailVerified,
     });

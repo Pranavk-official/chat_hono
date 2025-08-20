@@ -14,11 +14,11 @@ import {
   generateAuthToken,
   generateRefreshToken,
   refreshAccessToken,
+  verifyToken,
 } from "@utils/jwt";
 import { generateOtp } from "@utils/random";
 import {
   ScopeEnumType,
-  generateOtpSchema,
   verifySignupSchema,
   loginSchema,
 } from "../models/auth.model";
@@ -136,7 +136,7 @@ export const createUserService = async ({
 
 export const generateTokensService = async (user: User) => {
   const tokenPayload = {
-    userId: user.id,
+    id: user.id,
     email: user.email,
     emailVerified: user.emailVerified,
   };
@@ -155,36 +155,65 @@ export const refreshTokenService = async (body: { refreshToken: string }) => {
   // Find session by refresh token
   const session = await prisma.session.findUnique({
     where: { token: refreshToken },
+    include: { user: true },
   });
-  if (!session) throw new UnauthorizedError("Invalid refresh token");
+
+  if (!session) {
+    throw new UnauthorizedError("Invalid refresh token");
+  }
+
+  // Check if session is expired
+  if (session.expiresAt < new Date()) {
+    // Clean up expired session
+    await prisma.session.delete({ where: { token: refreshToken } });
+    throw new UnauthorizedError("Refresh token expired");
+  }
 
   try {
-    // Verify and refresh the access token
-    const newAccessToken = refreshAccessToken(refreshToken);
+    // Verify the refresh token is valid JWT
+    const decoded = verifyToken(refreshToken);
 
-    // Invalidate the old refresh token session (token rotation)
+    if (decoded.id !== session.userId || decoded.type !== "refresh") {
+      throw new UnauthorizedError("Invalid token");
+    }
+
+    // Generate new tokens
+    const tokenPayload = {
+      id: session.user.id,
+      email: session.user.email,
+      emailVerified: session.user.emailVerified,
+    };
+
+    const newAccessToken = generateAuthToken(tokenPayload);
+    const newRefreshToken = generateRefreshToken(tokenPayload);
+
+    // Implement refresh token rotation - invalidate old token and create new session
     await prisma.session.delete({ where: { token: refreshToken } });
 
-    // Generate a new refresh token
-    const newRefreshToken = generateRefreshToken({
-      userId: session.userId,
-      emailVerified: true, // Assuming email is verified for refresh tokens
-    });
-
-    // Create a new session for the new refresh token
+    // Create new session with new refresh token
     await prisma.session.create({
       data: {
         id: require("crypto").randomBytes(16).toString("hex"),
         userId: session.userId,
         token: newRefreshToken,
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
         createdAt: new Date(),
         updatedAt: new Date(),
+        userAgent: session.userAgent,
+        ipAddress: session.ipAddress,
       },
     });
 
-    return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+    return {
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+      expiresIn: TOKEN_EXPIRATION_TIME,
+    };
   } catch (error) {
+    // Clean up potentially compromised session
+    await prisma.session
+      .delete({ where: { token: refreshToken } })
+      .catch(() => {});
     throw new UnauthorizedError("Failed to refresh token");
   }
 };

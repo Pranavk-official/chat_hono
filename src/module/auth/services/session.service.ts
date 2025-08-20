@@ -8,18 +8,19 @@ import { randomBytes } from "crypto";
 // --- Session Management ---
 export async function createUserSession(
   userId: string,
-  accessToken: string,
+  refreshToken: string,
   userAgent?: string,
   ipAddress?: string
 ) {
-  // Invalidate previous sessions for this user and token (optional, for single-device login)
-  // await prisma.session.deleteMany({ where: { userId, token: accessToken } });
+  // Invalidate previous sessions for this user (optional, for single-device login)
+  // await prisma.session.deleteMany({ where: { userId } });
+
   return prisma.session.create({
     data: {
       id: randomBytes(16).toString("hex"),
       userId,
-      token: accessToken,
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      token: refreshToken, // Store refresh token, not access token
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
       createdAt: new Date(),
       updatedAt: new Date(),
       userAgent,
@@ -28,9 +29,9 @@ export async function createUserSession(
   });
 }
 
-export async function removeUserSession(token: string) {
-  // Remove session by token (logout)
-  return prisma.session.deleteMany({ where: { token } });
+export async function removeUserSession(refreshToken: string) {
+  // Remove session by refresh token (logout)
+  return prisma.session.deleteMany({ where: { token: refreshToken } });
 }
 
 export async function findSessionByToken(token: string) {

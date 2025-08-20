@@ -4,6 +4,9 @@
     "dev": "bunx prisma generate && bun run --hot src/index.ts",
     "start": "bun run src/index.ts",
     "build": "bunx prisma generate && bun build src/index.ts --outdir=dist --target=bun",
+    "test:auth": "bun run scripts/test-auth.js",
+    "test:groups": "bun run scripts/test-groups.js",
+    "test:all": "bun run test:auth && bun run test:groups",
     "db:generate": "bunx @better-auth/cli generate",
     "db:migrate": "bunx prisma db push",
     "db:studio": "bunx prisma studio",
@@ -13,6 +16,7 @@
   "dependencies": {
     "@hono/zod-validator": "^0.7.2",
     "@prisma/client": "^6.14.0",
+    "cloudinary": "^2.7.0",
     "hono": "^4.9.1",
     "ioredis": "^5.7.0",
     "jsonwebtoken": "^9.0.2",

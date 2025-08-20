@@ -10,3 +10,11 @@ export const OTP_IP_BLOCK_DURATION = 60 * 60; // 1 hour in seconds
 // Token Configuration
 export const TOKEN_EXPIRATION_TIME = 30 * 24 * 60 * 60; // 30 days in seconds
 export const REFRESH_TOKEN_EXPIRATION_TIME = 30 * 24 * 60 * 60; // 30 days in seconds
+
+// Image upload
+export const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
+export const ALLOWED_IMAGE_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]; // no gif
