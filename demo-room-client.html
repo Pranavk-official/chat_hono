@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socket.IO Rooms Demo</title>
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .status.connected { background-color: #d4edda; color: #155724; }
+        .status.disconnected { background-color: #f8d7da; color: #721c24; }
+        .status.error { background-color: #fff3cd; color: #856404; }
+        .room-controls {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-warning { background-color: #ffc107; color: black; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        button:hover { opacity: 0.8; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .messages {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 20px 0;
+            background-color: #fafafa;
+        }
+        .message {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 5px;
+            background-color: white;
+            border-left: 3px solid #007bff;
+        }
+        .message.system {
+            background-color: #e9ecef;
+            border-left-color: #6c757d;
+            font-style: italic;
+        }
+        .message.error {
+            background-color: #f8d7da;
+            border-left-color: #dc3545;
+            color: #721c24;
+        }
+        .message.typing {
+            background-color: #fff3cd;
+            border-left-color: #ffc107;
+            color: #856404;
+        }
+        .timestamp {
+            font-size: 12px;
+            color: #6c757d;
+            float: right;
+        }
+        .room-info {
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .typing-indicators {
+            min-height: 30px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-style: italic;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Socket.IO Rooms Demo</h1>
+        
+        <!-- Connection Status -->
+        <div id="status" class="status disconnected">Disconnected</div>
+        
+        <!-- Connection Controls -->
+        <div class="input-group">
+            <input type="text" id="tokenInput" placeholder="Enter JWT token..." />
+            <button id="connectBtn" class="btn-primary">Connect</button>
+            <button id="disconnectBtn" class="btn-danger" disabled>Disconnect</button>
+        </div>
+        
+        <!-- Room Controls -->
+        <div class="room-controls">
+            <div class="input-group">
+                <input type="text" id="groupIdInput" placeholder="Enter Group ID..." />
+                <button id="joinRoomBtn" class="btn-success" disabled>Join Room</button>
+                <button id="leaveRoomBtn" class="btn-warning" disabled>Leave Room</button>
+                <button id="roomInfoBtn" class="btn-primary" disabled>Room Info</button>
+            </div>
+        </div>
+        
+        <!-- Room Information -->
+        <div id="roomInfo" class="room-info" style="display: none;">
+            <strong>Room Status:</strong> <span id="roomStatus">Not in room</span><br>
+            <strong>Members Online:</strong> <span id="memberCount">0</span><br>
+            <strong>Online Users:</strong> <span id="onlineUsers">None</span>
+        </div>
+        
+        <!-- Typing Indicators -->
+        <div id="typingIndicators" class="typing-indicators">
+            No one is typing...
+        </div>
+        
+        <!-- Message Input -->
+        <div class="input-group">
+            <input type="text" id="messageInput" placeholder="Type a message..." disabled />
+            <button id="sendBtn" class="btn-primary" disabled>Send</button>
+            <button id="startTypingBtn" class="btn-warning" disabled>Start Typing</button>
+            <button id="stopTypingBtn" class="btn-warning" disabled>Stop Typing</button>
+        </div>
+        
+        <!-- Messages Area -->
+        <div id="messages" class="messages"></div>
+        
+        <!-- Controls -->
+        <div class="input-group">
+            <button id="clearBtn" class="btn-warning">Clear Messages</button>
+            <button id="getMessagesBtn" class="btn-primary" disabled>Get History</button>
+        </div>
+    </div>
+
+    <script>
+        class SocketRoomDemo {
+            constructor() {
+                this.socket = null;
+                this.currentGroupId = null;
+                this.typingUsers = new Set();
+                this.isTyping = false;
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                // Connection controls
+                document.getElementById('connectBtn').addEventListener('click', () => this.connect());
+                document.getElementById('disconnectBtn').addEventListener('click', () => this.disconnect());
+
+                // Room controls
+                document.getElementById('joinRoomBtn').addEventListener('click', () => this.joinRoom());
+                document.getElementById('leaveRoomBtn').addEventListener('click', () => this.leaveRoom());
+                document.getElementById('roomInfoBtn').addEventListener('click', () => this.getRoomInfo());
+
+                // Message controls
+                document.getElementById('sendBtn').addEventListener('click', () => this.sendMessage());
+                document.getElementById('messageInput').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.sendMessage();
+                });
+
+                // Typing controls
+                document.getElementById('startTypingBtn').addEventListener('click', () => this.startTyping());
+                document.getElementById('stopTypingBtn').addEventListener('click', () => this.stopTyping());
+
+                // Utility controls
+                document.getElementById('clearBtn').addEventListener('click', () => this.clearMessages());
+                document.getElementById('getMessagesBtn').addEventListener('click', () => this.getMessages());
+            }
+
+            connect() {
+                const token = document.getElementById('tokenInput').value.trim();
+                if (!token) {
+                    this.addMessage('Please enter a JWT token', 'error');
+                    return;
+                }
+
+                this.socket = io('http://localhost:3000', {
+                    auth: { token },
+                    transports: ['websocket']
+                });
+
+                this.setupSocketEvents();
+            }
+
+            setupSocketEvents() {
+                this.socket.on('connect', () => {
+                    this.updateStatus('Connected', 'connected');
+                    this.toggleControls(true);
+                    this.addMessage('Connected to Socket.IO server', 'system');
+                });
+
+                this.socket.on('disconnect', (reason) => {
+                    this.updateStatus('Disconnected', 'disconnected');
+                    this.toggleControls(false);
+                    this.addMessage(`Disconnected: ${reason}`, 'system');
+                });
+
+                this.socket.on('error', (error) => {
+                    this.addMessage(`Error: ${error.message}`, 'error');
+                });
+
+                // Room events
+                this.socket.on('joined_group_success', (data) => {
+                    this.currentGroupId = data.groupId;
+                    this.updateRoomInfo(`In room: ${data.groupId}`, data.memberCount);
+                    this.addMessage(`Successfully joined room. ${data.memberCount} members online`, 'system');
+                });
+
+                this.socket.on('left_group_success', (data) => {
+                    this.currentGroupId = null;
+                    this.updateRoomInfo('Not in room', data.memberCount);
+                    this.addMessage(`Successfully left room. ${data.memberCount} members remaining`, 'system');
+                });
+
+                this.socket.on('user_joined_group', (data) => {
+                    this.addMessage(`${data.userName} joined the room`, 'system');
+                    if (data.memberCount) {
+                        this.updateMemberCount(data.memberCount);
+                    }
+                });
+
+                this.socket.on('user_left_group', (data) => {
+                    this.addMessage(`${data.userName} left the room`, 'system');
+                    if (data.memberCount) {
+                        this.updateMemberCount(data.memberCount);
+                    }
+                });
+
+                // Message events
+                this.socket.on('message_received', (message) => {
+                    const timestamp = new Date(message.createdAt).toLocaleTimeString();
+                    this.addMessage(`[${timestamp}] ${message.user.name}: ${message.content}`);
+                });
+
+                // Typing events
+                this.socket.on('user_typing', (data) => {
+                    this.typingUsers.add(data.userName);
+                    this.updateTypingIndicators();
+                });
+
+                this.socket.on('user_stopped_typing', (data) => {
+                    // Remove user by finding the userName (we don't store userId mapping)
+                    this.typingUsers.forEach(userName => {
+                        if (userName.includes(data.userId)) {
+                            this.typingUsers.delete(userName);
+                        }
+                    });
+                    this.updateTypingIndicators();
+                });
+
+                // Room info events
+                this.socket.on('room_members_update', (data) => {
+                    this.updateMemberCount(data.memberCount);
+                    document.getElementById('onlineUsers').textContent = 
+                        data.onlineMembers.length > 0 ? data.onlineMembers.join(', ') : 'None';
+                });
+
+                this.socket.on('group_messages', (data) => {
+                    this.addMessage(`Loaded ${data.messages.length} messages from history`, 'system');
+                    data.messages.reverse().forEach(message => {
+                        const timestamp = new Date(message.createdAt).toLocaleTimeString();
+                        this.addMessage(`[${timestamp}] ${message.user.name}: ${message.content}`);
+                    });
+                });
+            }
+
+            disconnect() {
+                if (this.socket) {
+                    this.socket.disconnect();
+                    this.socket = null;
+                }
+            }
+
+            joinRoom() {
+                const groupId = document.getElementById('groupIdInput').value.trim();
+                if (!groupId) {
+                    this.addMessage('Please enter a Group ID', 'error');
+                    return;
+                }
+
+                if (!this.socket || !this.socket.connected) {
+                    this.addMessage('Not connected to server', 'error');
+                    return;
+                }
+
+                this.socket.emit('join_group', groupId);
+            }
+
+            leaveRoom() {
+                if (!this.currentGroupId) {
+                    this.addMessage('Not currently in a room', 'error');
+                    return;
+                }
+
+                this.socket.emit('leave_group', this.currentGroupId);
+            }
+
+            getRoomInfo() {
+                if (!this.currentGroupId) {
+                    this.addMessage('Not currently in a room', 'error');
+                    return;
+                }
+
+                this.socket.emit('get_room_info', { groupId: this.currentGroupId });
+            }
+
+            sendMessage() {
+                const content = document.getElementById('messageInput').value.trim();
+                if (!content) return;
+
+                if (!this.currentGroupId) {
+                    this.addMessage('Not currently in a room', 'error');
+                    return;
+                }
+
+                this.socket.emit('send_message', {
+                    groupId: this.currentGroupId,
+                    content: content,
+                    type: 'TEXT'
+                });
+
+                document.getElementById('messageInput').value = '';
+            }
+
+            startTyping() {
+                if (!this.currentGroupId || this.isTyping) return;
+
+                this.isTyping = true;
+                this.socket.emit('typing_start', { groupId: this.currentGroupId });
+                this.addMessage('Started typing indicator', 'system');
+            }
+
+            stopTyping() {
+                if (!this.currentGroupId || !this.isTyping) return;
+
+                this.isTyping = false;
+                this.socket.emit('typing_stop', { groupId: this.currentGroupId });
+                this.addMessage('Stopped typing indicator', 'system');
+            }
+
+            getMessages() {
+                if (!this.currentGroupId) {
+                    this.addMessage('Not currently in a room', 'error');
+                    return;
+                }
+
+                this.socket.emit('get_group_messages', {
+                    groupId: this.currentGroupId,
+                    limit: 20
+                });
+            }
+
+            clearMessages() {
+                document.getElementById('messages').innerHTML = '';
+            }
+
+            updateStatus(status, className) {
+                const statusEl = document.getElementById('status');
+                statusEl.textContent = status;
+                statusEl.className = `status ${className}`;
+            }
+
+            toggleControls(connected) {
+                const elements = ['disconnectBtn', 'joinRoomBtn', 'leaveRoomBtn', 'roomInfoBtn', 
+                                'sendBtn', 'startTypingBtn', 'stopTypingBtn', 'getMessagesBtn', 'messageInput'];
+                
+                elements.forEach(id => {
+                    document.getElementById(id).disabled = !connected;
+                });
+
+                document.getElementById('connectBtn').disabled = connected;
+            }
+
+            updateRoomInfo(status, memberCount = 0) {
+                document.getElementById('roomStatus').textContent = status;
+                document.getElementById('memberCount').textContent = memberCount;
+                document.getElementById('roomInfo').style.display = 'block';
+            }
+
+            updateMemberCount(count) {
+                document.getElementById('memberCount').textContent = count;
+            }
+
+            updateTypingIndicators() {
+                const indicatorsEl = document.getElementById('typingIndicators');
+                if (this.typingUsers.size === 0) {
+                    indicatorsEl.textContent = 'No one is typing...';
+                } else {
+                    const users = Array.from(this.typingUsers);
+                    indicatorsEl.textContent = `${users.join(', ')} ${users.length === 1 ? 'is' : 'are'} typing...`;
+                }
+            }
+
+            addMessage(content, type = 'message') {
+                const messagesEl = document.getElementById('messages');
+                const messageEl = document.createElement('div');
+                messageEl.className = `message ${type}`;
+                
+                const timestamp = new Date().toLocaleTimeString();
+                messageEl.innerHTML = `
+                    <span class="timestamp">${timestamp}</span>
+                    ${content}
+                `;
+
+                messagesEl.appendChild(messageEl);
+                messagesEl.scrollTop = messagesEl.scrollHeight;
+            }
+        }
+
+        // Initialize the demo
+        const demo = new SocketRoomDemo();
+
+        // Add some helpful instructions
+        demo.addMessage('Welcome to the Socket.IO Rooms Demo!', 'system');
+        demo.addMessage('1. Enter your JWT token and click Connect', 'system');
+        demo.addMessage('2. Enter a Group ID and click Join Room', 'system');
+        demo.addMessage('3. Start chatting with other users in the room!', 'system');
+    </script>
+</body>
+</html>

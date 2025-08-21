@@ -88,9 +88,7 @@ export const verifyOtpService = async ({
   if (scope === "SIGNUP") {
     verifySignupSchema.pick({ email: true, otp: true }).parse({ email, otp });
   } else if (scope === "LOGIN") {
-    loginSchema
-      .pick({ identifier: true, otp: true })
-      .parse({ identifier: email, otp });
+    loginSchema.pick({ email: true, otp: true }).parse({ email, otp });
   }
   const verification = await prisma.verification.findFirst({
     where: {

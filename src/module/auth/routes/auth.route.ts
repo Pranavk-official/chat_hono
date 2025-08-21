@@ -24,7 +24,7 @@ const app = new Hono();
 
 app.post(
   "/generate-otp",
-  otpRateLimiter,
+  // otpRateLimiter,
   zValidator("json", generateOtpSchema),
   async (c) => {
     const body = await c.req.json();
@@ -65,9 +65,9 @@ app.post("/signup", zValidator("json", verifySignupSchema), async (c) => {
 });
 
 app.post("/login", zValidator("json", loginSchema), async (c) => {
-  const { identifier, otp } = c.req.valid("json");
-  await verifyOtpService({ email: identifier, otp, scope: "LOGIN" });
-  const user = await getUserByEmail(identifier);
+  const { email, otp } = c.req.valid("json");
+  await verifyOtpService({ email, otp, scope: "LOGIN" });
+  const user = await getUserByEmail(email);
   const tokens = await generateTokensService(user!);
   await createUserSession(user!.id, tokens.refreshToken);
   const response = responder(

@@ -98,15 +98,14 @@ model Message {
   content String
   type    MessageType @default(TEXT)
 
-  userId   String?
-  senderId String
-  groupId  String
-
+  senderId  String
+  groupId   String
   replyToId String?
-  replyTo   Message?  @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: Cascade)
-  replies   Message[] @relation("MessageReplies")
 
-  user        User?        @relation(fields: [userId], references: [id])
+  replyTo Message?  @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: Cascade)
+  replies Message[] @relation("MessageReplies")
+
+  user        User         @relation(fields: [senderId], references: [id]) // Changed from userId to senderId
   group       Group        @relation(fields: [groupId], references: [id])
   attachments Attachment[]
 

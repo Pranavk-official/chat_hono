@@ -1,0 +1,1729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat App - WhatsApp Style Demo</title>
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Login Screen */
+        .login-screen {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #25d366, #128c7e);
+        }
+
+        .login-container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            width: 400px;
+            text-align: center;
+        }
+
+        .login-container h1 {
+            color: #25d366;
+            margin-bottom: 30px;
+            font-size: 2rem;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #54656f;
+            font-weight: 500;
+        }
+
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e9edef;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: #25d366;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #25d366;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1fb855;
+        }
+
+        .btn-secondary {
+            background: #f0f2f5;
+            color: #54656f;
+            margin-top: 10px;
+        }
+
+        .btn-secondary:hover {
+            background: #e4e6ea;
+        }
+
+        /* Main App Layout */
+        .app-container {
+            display: none;
+            height: 100vh;
+            background: #f0f2f5;
+        }
+
+        .app-header {
+            background: #25d366;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .app-header h1 {
+            font-size: 1.5rem;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #128c7e;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .main-content {
+            display: flex;
+            height: calc(100vh - 70px);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 400px;
+            background: white;
+            border-right: 1px solid #e9edef;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #e9edef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sidebar-header h2 {
+            color: #111b21;
+            font-size: 1.2rem;
+        }
+
+        .create-group-btn {
+            background: #25d366;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .groups-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .group-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid #f0f2f5;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .group-item:hover {
+            background: #f5f6f6;
+        }
+
+        .group-item.active {
+            background: #e7f3ff;
+            border-right: 3px solid #25d366;
+        }
+
+        .group-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #54656f;
+            font-size: 1.2rem;
+        }
+
+        .group-info h3 {
+            color: #111b21;
+            font-size: 16px;
+            margin-bottom: 2px;
+        }
+
+        .group-info p {
+            color: #667781;
+            font-size: 14px;
+        }
+
+        /* Chat Area */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #efeae2;
+        }
+
+        .chat-header {
+            background: white;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e9edef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .chat-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-btn {
+            background: none;
+            border: none;
+            color: #54656f;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            transition: background-color 0.3s;
+        }
+
+        .action-btn:hover {
+            background: #f0f2f5;
+        }
+
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="%23e5ddd5"><path d="M20 0C8.95 0 0 8.95 0 20s8.95 20 20 20 20-8.95 20-20S31.05 0 20 0zm0 36c-8.82 0-16-7.18-16-16S11.18 4 20 4s16 7.18 16 16-7.18 16-16 16z"/></svg>');
+        }
+
+        .message {
+            max-width: 65%;
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 10px;
+            position: relative;
+            word-wrap: break-word;
+        }
+
+        .message.sent {
+            background: #d9fdd3;
+            margin-left: auto;
+            border-bottom-right-radius: 5px;
+        }
+
+        .message.received {
+            background: white;
+            margin-right: auto;
+            border-bottom-left-radius: 5px;
+        }
+
+        .message.system {
+            background: #fff3cd;
+            margin: 10px auto;
+            text-align: center;
+            font-style: italic;
+            max-width: 80%;
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .sender-name {
+            font-weight: bold;
+            color: #25d366;
+            font-size: 14px;
+        }
+
+        .message-time {
+            font-size: 12px;
+            color: #667781;
+        }
+
+        .message-content {
+            font-size: 14px;
+            color: #111b21;
+            line-height: 1.4;
+        }
+
+        .typing-indicator {
+            background: white;
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            font-style: italic;
+            color: #667781;
+            max-width: 200px;
+        }
+
+        /* Message Input */
+        .message-input-container {
+            background: white;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 12px 20px;
+            border: 1px solid #e9edef;
+            border-radius: 25px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .send-btn {
+            background: #25d366;
+            color: white;
+            border: none;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Empty State */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            color: #667781;
+        }
+
+        .empty-state i {
+            font-size: 5rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            margin: 50px auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e9edef;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #667781;
+        }
+
+        .member-item {
+            padding: 15px 0;
+            border-bottom: 1px solid #f0f2f5;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .member-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .member-details {
+            flex: 1;
+        }
+
+        .member-name {
+            font-weight: bold;
+            color: #111b21;
+        }
+
+        .member-email {
+            color: #667781;
+            font-size: 14px;
+        }
+
+        .member-role {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-top: 2px;
+        }
+
+        .role-owner {
+            background: #ffd700;
+            color: #b8860b;
+        }
+
+        .role-admin {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .role-member {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+
+        .member-actions {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .role-selector {
+            padding: 4px 8px;
+            border: 1px solid #e9edef;
+            border-radius: 5px;
+            font-size: 12px;
+            background: white;
+        }
+
+        .remove-member-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .promote-btn, .demote-btn {
+            background: #25d366;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+
+        .demote-btn {
+            background: #ff9800;
+        }
+
+        /* Search Users */
+        .user-search {
+            margin-bottom: 20px;
+        }
+
+        .user-search input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e9edef;
+            border-radius: 5px;
+        }
+
+        .search-results {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #e9edef;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+
+        .user-item {
+            padding: 10px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .user-item:hover {
+            background: #f0f2f5;
+        }
+
+        .add-user-btn {
+            background: #25d366;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: 50%;
+            }
+            
+            .chat-container {
+                height: 50%;
+            }
+        }
+
+        /* Status indicators */
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-left: 10px;
+        }
+
+        .status-online { background: #25d366; }
+        .status-offline { background: #667781; }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 5px;
+            color: white;
+            z-index: 2000;
+            animation: slideIn 0.3s ease;
+        }
+
+        .notification.success { background: #25d366; }
+        .notification.error { background: #dc3545; }
+        .notification.warning { background: #ffc107; color: black; }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-container">
+            <h1><i class="fab fa-whatsapp"></i> Chat App</h1>
+            
+            <div id="authForm">
+                <div class="input-group">
+                    <label>Authentication Method</label>
+                    <select id="authMethod">
+                        <option value="token">Use Existing Token</option>
+                        <option value="signup">Sign Up</option>
+                        <option value="login">Log In</option>
+                    </select>
+                </div>
+
+                <!-- Token Input -->
+                <div id="tokenInputGroup" class="input-group">
+                    <label>JWT Token</label>
+                    <input type="text" id="jwtToken" placeholder="Enter your JWT token">
+                </div>
+
+                <!-- Email/Password Form -->
+                <div id="credentialsForm" style="display: none;">
+                    <div class="input-group">
+                        <label>Email</label>
+                        <input type="email" id="email" placeholder="Enter your email">
+                    </div>
+                    <div class="input-group" id="nameGroup" style="display: none;">
+                        <label>Name</label>
+                        <input type="text" id="name" placeholder="Enter your name">
+                    </div>
+                    <div class="input-group" id="passwordGroup" style="display: none;">
+                        <label>Password</label>
+                        <input type="password" id="password" placeholder="Enter your password">
+                    </div>
+                </div>
+
+                <button id="authSubmitBtn" class="btn btn-primary">Connect</button>
+                <div id="authStatus" style="margin-top: 15px; color: #667781; text-align: center;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="appContainer" class="app-container">
+        <!-- App Header -->
+        <div class="app-header">
+            <h1><i class="fab fa-whatsapp"></i> Chat App</h1>
+            <div class="user-info">
+                <div class="user-avatar" id="userAvatar">U</div>
+                <span id="userName">User</span>
+                <button class="btn-secondary" onclick="logout()" style="margin-left: 15px; padding: 5px 10px;">Logout</button>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    <h2>Groups</h2>
+                    <button class="create-group-btn" onclick="showCreateGroupModal()">
+                        <i class="fas fa-plus"></i> New Group
+                    </button>
+                </div>
+                <div id="groupsList" class="groups-list">
+                    <!-- Groups will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Chat Container -->
+            <div class="chat-container">
+                <div id="emptyState" class="empty-state">
+                    <i class="fab fa-whatsapp"></i>
+                    <h2>Welcome to Chat App</h2>
+                    <p>Select a group to start chatting</p>
+                </div>
+
+                <div id="chatArea" style="display: none; height: 100%; display: flex; flex-direction: column;">
+                    <!-- Chat Header -->
+                    <div class="chat-header">
+                        <div class="chat-info">
+                            <div class="group-avatar" id="currentGroupAvatar">G</div>
+                            <div>
+                                <h3 id="currentGroupName">Group Name</h3>
+                                <p id="currentGroupStatus">Click to see group info</p>
+                            </div>
+                        </div>
+                        <div class="chat-actions">
+                            <button class="action-btn" onclick="showGroupInfoModal()" title="Group Info">
+                                <i class="fas fa-info-circle"></i>
+                            </button>
+                            <button class="action-btn" onclick="showMembersModal()" title="Members">
+                                <i class="fas fa-users"></i>
+                            </button>
+                            <button class="action-btn" onclick="leaveCurrentGroup()" title="Leave Group">
+                                <i class="fas fa-sign-out-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Messages -->
+                    <div id="messagesContainer" class="messages-container">
+                        <!-- Messages will appear here -->
+                    </div>
+
+                    <!-- Message Input -->
+                    <div class="message-input-container">
+                        <input type="text" id="messageInput" class="message-input" placeholder="Type a message..." disabled>
+                        <button id="sendBtn" class="send-btn" onclick="sendMessage()" disabled>
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Group Modal -->
+    <div id="createGroupModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Create New Group</h2>
+                <button class="close-btn" onclick="hideCreateGroupModal()">&times;</button>
+            </div>
+            <div class="input-group">
+                <label>Group Name</label>
+                <input type="text" id="groupName" placeholder="Enter group name">
+            </div>
+            <div class="input-group">
+                <label>Description (Optional)</label>
+                <input type="text" id="groupDescription" placeholder="Enter group description">
+            </div>
+            <div class="input-group">
+                <label>
+                    <input type="checkbox" id="isPrivate"> Private Group
+                </label>
+            </div>
+            <button class="btn btn-primary" onclick="createGroup()">Create Group</button>
+        </div>
+    </div>
+
+    <!-- Group Info Modal -->
+    <div id="groupInfoModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Group Information</h2>
+                <button class="close-btn" onclick="hideGroupInfoModal()">&times;</button>
+            </div>
+            <div id="groupInfoContent">
+                <!-- Group info will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Members Modal -->
+    <div id="membersModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Group Members</h2>
+                <button class="close-btn" onclick="hideMembersModal()">&times;</button>
+            </div>
+            
+            <!-- Add Member Section -->
+            <div class="user-search">
+                <input type="text" id="userSearchInput" placeholder="Search users to add..." onkeyup="searchUsers()">
+                <div id="searchResults" class="search-results"></div>
+            </div>
+
+            <!-- Current Members -->
+            <h3>Current Members</h3>
+            <div id="membersList">
+                <!-- Members will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class ChatApp {
+            constructor() {
+                this.socket = null;
+                this.currentUser = null;
+                this.currentGroup = null;
+                this.groups = [];
+                this.apiBase = 'http://localhost:3000/api';
+                this.socketUrl = 'http://localhost:3000';
+                this.authToken = null;
+                this.typingUsers = new Set();
+                
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                // Auth method change
+                document.getElementById('authMethod').addEventListener('change', (e) => {
+                    this.toggleAuthMethod(e.target.value);
+                });
+
+                // Auth submit
+                document.getElementById('authSubmitBtn').addEventListener('click', () => {
+                    this.handleAuth();
+                });
+
+                // Message input
+                document.getElementById('messageInput').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.sendMessage();
+                    } else {
+                        this.handleTyping();
+                    }
+                });
+
+                // Stop typing on blur
+                document.getElementById('messageInput').addEventListener('blur', () => {
+                    this.stopTyping();
+                });
+
+                // Modal clicks
+                window.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('modal')) {
+                        e.target.style.display = 'none';
+                    }
+                });
+            }
+
+            toggleAuthMethod(method) {
+                const tokenGroup = document.getElementById('tokenInputGroup');
+                const credentialsForm = document.getElementById('credentialsForm');
+                const nameGroup = document.getElementById('nameGroup');
+                const passwordGroup = document.getElementById('passwordGroup');
+                const submitBtn = document.getElementById('authSubmitBtn');
+
+                if (method === 'token') {
+                    tokenGroup.style.display = 'block';
+                    credentialsForm.style.display = 'none';
+                    submitBtn.textContent = 'Connect';
+                } else {
+                    tokenGroup.style.display = 'none';
+                    credentialsForm.style.display = 'block';
+                    
+                    if (method === 'signup') {
+                        nameGroup.style.display = 'block';
+                        passwordGroup.style.display = 'block';
+                        submitBtn.textContent = 'Sign Up';
+                    } else {
+                        nameGroup.style.display = 'none';
+                        passwordGroup.style.display = 'block';
+                        submitBtn.textContent = 'Log In';
+                    }
+                }
+            }
+
+            async handleAuth() {
+                const authMethod = document.getElementById('authMethod').value;
+                const statusEl = document.getElementById('authStatus');
+                
+                try {
+                    statusEl.textContent = 'Processing...';
+                    
+                    if (authMethod === 'token') {
+                        const token = document.getElementById('jwtToken').value.trim();
+                        if (!token) {
+                            throw new Error('Please enter a JWT token');
+                        }
+                        this.authToken = token;
+                        await this.verifyTokenAndConnect();
+                    } else {
+                        await this.handleOTPAuth(authMethod);
+                    }
+                } catch (error) {
+                    statusEl.textContent = `Error: ${error.message}`;
+                    statusEl.style.color = '#dc3545';
+                }
+            }
+
+            async handleOTPAuth(method) {
+                const email = document.getElementById('email').value.trim();
+                const name = document.getElementById('name').value.trim();
+                const password = document.getElementById('password').value.trim();
+                
+                if (!email) throw new Error('Please enter your email');
+                if (method === 'signup' && !name) throw new Error('Please enter your name');
+                if (method === 'login' && !password) throw new Error('Please enter your password');
+
+                // Generate OTP
+                const otpResponse = await this.apiRequest('/auth/generate-otp', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        email,
+                        scope: method.toUpperCase()
+                    })
+                });
+
+                document.getElementById('authStatus').textContent = 'OTP sent! Using development OTP: 123456';
+
+                // Verify OTP (using development OTP)
+                const verifyData = {
+                    email,
+                    otp: '123456',
+                    scope: method.toUpperCase()
+                };
+
+                if (method === 'signup') {
+                    verifyData.userData = { name, password };
+                }
+
+                const authResponse = await this.apiRequest('/auth/verify-otp', {
+                    method: 'POST',
+                    body: JSON.stringify(verifyData)
+                });
+
+                this.authToken = authResponse.data.accessToken;
+                this.currentUser = authResponse.data.user;
+                await this.connectToApp();
+            }
+
+            async verifyTokenAndConnect() {
+                // Get user info with the token
+                const userResponse = await this.apiRequest('/users/me', {
+                    headers: {
+                        'Authorization': `Bearer ${this.authToken}`
+                    }
+                });
+                
+                this.currentUser = userResponse.data;
+                await this.connectToApp();
+            }
+
+            async connectToApp() {
+                // Connect to Socket.IO
+                this.socket = io(this.socketUrl, {
+                    auth: { token: this.authToken },
+                    transports: ['websocket']
+                });
+
+                this.setupSocketEvents();
+                
+                // Switch to main app
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('appContainer').style.display = 'block';
+                
+                // Update user info
+                document.getElementById('userName').textContent = this.currentUser.name;
+                document.getElementById('userAvatar').textContent = this.currentUser.name.charAt(0).toUpperCase();
+                
+                // Load groups
+                await this.loadGroups();
+                
+                this.showNotification('Connected successfully!', 'success');
+            }
+
+            setupSocketEvents() {
+                this.socket.on('connect', () => {
+                    console.log('Connected to Socket.IO');
+                });
+
+                this.socket.on('disconnect', (reason) => {
+                    console.log('Disconnected:', reason);
+                    this.showNotification('Disconnected from server', 'error');
+                });
+
+                this.socket.on('error', (error) => {
+                    this.showNotification(`Socket error: ${error.message}`, 'error');
+                });
+
+                // Group events
+                this.socket.on('joined_group_success', (data) => {
+                    document.getElementById('messageInput').disabled = false;
+                    document.getElementById('sendBtn').disabled = false;
+                    this.showNotification(`Joined ${data.groupId}`, 'success');
+                });
+
+                this.socket.on('user_joined_group', (data) => {
+                    this.addSystemMessage(`${data.userName} joined the group`);
+                });
+
+                this.socket.on('user_left_group', (data) => {
+                    this.addSystemMessage(`${data.userName} left the group`);
+                });
+
+                // Message events
+                this.socket.on('message_received', (message) => {
+                    this.displayMessage(message);
+                });
+
+                // Typing events
+                this.socket.on('user_typing', (data) => {
+                    this.showTypingIndicator(data.userName);
+                });
+
+                this.socket.on('user_stopped_typing', (data) => {
+                    this.hideTypingIndicator(data.userId);
+                });
+            }
+
+            async apiRequest(endpoint, options = {}) {
+                const response = await fetch(`${this.apiBase}${endpoint}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(this.authToken && { 'Authorization': `Bearer ${this.authToken}` }),
+                        ...options.headers
+                    },
+                    ...options
+                });
+
+                if (!response.ok) {
+                    const error = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${error}`);
+                }
+
+                return response.json();
+            }
+
+            async loadGroups() {
+                try {
+                    const response = await this.apiRequest('/groups');
+                    this.groups = response.data;
+                    this.renderGroups();
+                } catch (error) {
+                    this.showNotification(`Failed to load groups: ${error.message}`, 'error');
+                }
+            }
+
+            renderGroups() {
+                const groupsList = document.getElementById('groupsList');
+                groupsList.innerHTML = '';
+
+                if (this.groups.length === 0) {
+                    groupsList.innerHTML = '<div style="padding: 20px; text-align: center; color: #667781;">No groups found. Create your first group!</div>';
+                    return;
+                }
+
+                this.groups.forEach(group => {
+                    // Find current user's role in this group
+                    const currentUserMember = group.members?.find(member => member.user.id === this.currentUser.id);
+                    const userRole = currentUserMember ? currentUserMember.role : null;
+                    
+                    let roleIndicator = '';
+                    if (userRole === 'OWNER') {
+                        roleIndicator = ' 👑';
+                    } else if (userRole === 'ADMIN') {
+                        roleIndicator = ' ⭐';
+                    }
+                    
+                    const groupEl = document.createElement('div');
+                    groupEl.className = 'group-item';
+                    groupEl.onclick = () => this.selectGroup(group);
+                    
+                    groupEl.innerHTML = `
+                        <div class="group-avatar">${group.name.charAt(0).toUpperCase()}</div>
+                        <div class="group-info">
+                            <h3>${group.name}${roleIndicator}</h3>
+                            <p>${group.description || 'No description'} • ${group.members?.length || 0} members</p>
+                        </div>
+                    `;
+                    
+                    groupsList.appendChild(groupEl);
+                });
+            }
+
+            async selectGroup(group) {
+                // Remove active class from all groups
+                document.querySelectorAll('.group-item').forEach(el => {
+                    el.classList.remove('active');
+                });
+
+                // Add active class to selected group
+                event.target.closest('.group-item').classList.add('active');
+
+                this.currentGroup = group;
+                
+                // Find current user's role in this group
+                const currentUserMember = group.members?.find(member => member.user.id === this.currentUser.id);
+                const userRole = currentUserMember ? currentUserMember.role : null;
+                
+                let roleDisplay = '';
+                if (userRole === 'OWNER') {
+                    roleDisplay = ' (Owner)';
+                } else if (userRole === 'ADMIN') {
+                    roleDisplay = ' (Admin)';
+                }
+                
+                // Update chat header
+                document.getElementById('currentGroupName').textContent = group.name + roleDisplay;
+                document.getElementById('currentGroupAvatar').textContent = group.name.charAt(0).toUpperCase();
+                document.getElementById('currentGroupStatus').textContent = `${group.members?.length || 0} members`;
+
+                // Show chat area
+                document.getElementById('emptyState').style.display = 'none';
+                document.getElementById('chatArea').style.display = 'flex';
+
+                // Clear messages
+                document.getElementById('messagesContainer').innerHTML = '';
+
+                // Join the group room
+                if (this.socket) {
+                    this.socket.emit('join_group', group.id);
+                    
+                    // Load recent messages
+                    setTimeout(() => {
+                        this.socket.emit('get_group_messages', {
+                            groupId: group.id,
+                            limit: 50
+                        });
+                    }, 500);
+                }
+            }
+
+            sendMessage() {
+                const messageInput = document.getElementById('messageInput');
+                const content = messageInput.value.trim();
+                
+                if (!content || !this.currentGroup) return;
+
+                this.socket.emit('send_message', {
+                    groupId: this.currentGroup.id,
+                    content: content,
+                    type: 'TEXT'
+                });
+
+                messageInput.value = '';
+                this.stopTyping();
+            }
+
+            displayMessage(message) {
+                const messagesContainer = document.getElementById('messagesContainer');
+                const messageEl = document.createElement('div');
+                
+                const isOwnMessage = message.senderId === this.currentUser.id;
+                messageEl.className = `message ${isOwnMessage ? 'sent' : 'received'}`;
+                
+                const timestamp = new Date(message.createdAt).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+
+                messageEl.innerHTML = `
+                    <div class="message-header">
+                        ${!isOwnMessage ? `<span class="sender-name">${message.user.name}</span>` : ''}
+                        <span class="message-time">${timestamp}</span>
+                    </div>
+                    <div class="message-content">${message.content}</div>
+                `;
+
+                messagesContainer.appendChild(messageEl);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+
+            addSystemMessage(content) {
+                const messagesContainer = document.getElementById('messagesContainer');
+                const messageEl = document.createElement('div');
+                messageEl.className = 'message system';
+                messageEl.innerHTML = `<div class="message-content">${content}</div>`;
+                messagesContainer.appendChild(messageEl);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+
+            handleTyping() {
+                if (!this.currentGroup || this.isTyping) return;
+                
+                this.isTyping = true;
+                this.socket.emit('typing_start', { groupId: this.currentGroup.id });
+                
+                // Auto-stop typing after 3 seconds
+                clearTimeout(this.typingTimeout);
+                this.typingTimeout = setTimeout(() => {
+                    this.stopTyping();
+                }, 3000);
+            }
+
+            stopTyping() {
+                if (!this.isTyping || !this.currentGroup) return;
+                
+                this.isTyping = false;
+                this.socket.emit('typing_stop', { groupId: this.currentGroup.id });
+                clearTimeout(this.typingTimeout);
+            }
+
+            showTypingIndicator(userName) {
+                this.typingUsers.add(userName);
+                this.updateTypingIndicator();
+            }
+
+            hideTypingIndicator(userId) {
+                // Remove by userName (we need to find it in our typing users)
+                this.typingUsers.forEach(userName => {
+                    if (userName.includes(userId)) {
+                        this.typingUsers.delete(userName);
+                    }
+                });
+                this.updateTypingIndicator();
+            }
+
+            updateTypingIndicator() {
+                const messagesContainer = document.getElementById('messagesContainer');
+                
+                // Remove existing typing indicator
+                const existingIndicator = messagesContainer.querySelector('.typing-indicator');
+                if (existingIndicator) {
+                    existingIndicator.remove();
+                }
+
+                if (this.typingUsers.size > 0) {
+                    const indicatorEl = document.createElement('div');
+                    indicatorEl.className = 'typing-indicator';
+                    
+                    const users = Array.from(this.typingUsers);
+                    const text = users.length === 1 
+                        ? `${users[0]} is typing...`
+                        : `${users.join(', ')} are typing...`;
+                    
+                    indicatorEl.textContent = text;
+                    messagesContainer.appendChild(indicatorEl);
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                }
+            }
+
+            async createGroup() {
+                const name = document.getElementById('groupName').value.trim();
+                const description = document.getElementById('groupDescription').value.trim();
+                const isPrivate = document.getElementById('isPrivate').checked;
+
+                if (!name) {
+                    this.showNotification('Please enter a group name', 'error');
+                    return;
+                }
+
+                try {
+                    const response = await this.apiRequest('/groups', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            name,
+                            description,
+                            isPrivate
+                        })
+                    });
+
+                    this.showNotification('Group created successfully!', 'success');
+                    this.hideCreateGroupModal();
+                    await this.loadGroups();
+                } catch (error) {
+                    this.showNotification(`Failed to create group: ${error.message}`, 'error');
+                }
+            }
+
+            async searchUsers() {
+                const query = document.getElementById('userSearchInput').value.trim();
+                const resultsContainer = document.getElementById('searchResults');
+
+                if (query.length < 2) {
+                    resultsContainer.innerHTML = '';
+                    return;
+                }
+
+                try {
+                    const response = await this.apiRequest(`/users?search=${encodeURIComponent(query)}`);
+                    const users = response.data;
+
+                    // Get current group members to filter them out
+                    let existingMemberIds = [];
+                    if (this.currentGroup && this.currentGroup.members) {
+                        existingMemberIds = this.currentGroup.members.map(member => member.user.id);
+                    }
+
+                    resultsContainer.innerHTML = '';
+                    
+                    users.forEach(user => {
+                        // Skip current user and existing members
+                        if (user.id === this.currentUser.id || existingMemberIds.includes(user.id)) return;
+                        
+                        const userEl = document.createElement('div');
+                        userEl.className = 'user-item';
+                        userEl.innerHTML = `
+                            <div class="member-info">
+                                <div class="user-avatar">${user.name.charAt(0).toUpperCase()}</div>
+                                <div>
+                                    <strong>${user.name}</strong><br>
+                                    <small>${user.email}</small>
+                                </div>
+                            </div>
+                            <button class="add-user-btn" onclick="chatApp.addMemberToGroup('${user.id}', '${user.name}')">
+                                Add
+                            </button>
+                        `;
+                        resultsContainer.appendChild(userEl);
+                    });
+                    
+                    if (resultsContainer.children.length === 0) {
+                        resultsContainer.innerHTML = '<div style="padding: 10px; text-align: center; color: #667781;">No users found to add</div>';
+                    }
+                } catch (error) {
+                    console.error('Search failed:', error);
+                }
+            }
+
+            async addMemberToGroup(userId, userName) {
+                if (!this.currentGroup) return;
+
+                try {
+                    await this.apiRequest(`/groups/${this.currentGroup.id}/members`, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            userId: userId,
+                            role: 'MEMBER'
+                        })
+                    });
+
+                    this.showNotification(`${userName} added to group`, 'success');
+                    document.getElementById('userSearchInput').value = '';
+                    document.getElementById('searchResults').innerHTML = '';
+                    await this.loadGroupMembers();
+                } catch (error) {
+                    const errorMessage = error.message.toLowerCase();
+                    if (errorMessage.includes('already a member')) {
+                        this.showNotification(`${userName} is already a member of this group`, 'warning');
+                    } else {
+                        this.showNotification(`Failed to add member: ${error.message}`, 'error');
+                    }
+                }
+            }
+
+            async removeMember(userId, userName) {
+                if (!this.currentGroup) return;
+
+                if (!confirm(`Are you sure you want to remove ${userName} from the group?`)) {
+                    return;
+                }
+
+                try {
+                    await this.apiRequest(`/groups/${this.currentGroup.id}/members/${userId}`, {
+                        method: 'DELETE'
+                    });
+
+                    this.showNotification(`${userName} removed from group`, 'success');
+                    await this.loadGroupMembers();
+                } catch (error) {
+                    const errorMessage = error.message.toLowerCase();
+                    if (errorMessage.includes('permission')) {
+                        this.showNotification(`You don't have permission to remove ${userName}`, 'error');
+                    } else if (errorMessage.includes('not a member')) {
+                        this.showNotification(`${userName} is not a member of this group`, 'warning');
+                    } else if (errorMessage.includes('owner')) {
+                        this.showNotification(`Cannot remove the group owner`, 'error');
+                    } else {
+                        this.showNotification(`Failed to remove member: ${error.message}`, 'error');
+                    }
+                }
+            }
+
+            async updateMemberRole(userId, newRole, userName) {
+                if (!this.currentGroup) return;
+
+                const roleNames = {
+                    'OWNER': 'Owner',
+                    'ADMIN': 'Admin', 
+                    'MEMBER': 'Member'
+                };
+
+                const confirmMessage = newRole === 'OWNER' 
+                    ? `Are you sure you want to transfer ownership to ${userName}? You will become an Admin.`
+                    : `Are you sure you want to change ${userName}'s role to ${roleNames[newRole]}?`;
+
+                if (!confirm(confirmMessage)) {
+                    return;
+                }
+
+                try {
+                    await this.apiRequest(`/groups/${this.currentGroup.id}/members/${userId}/role`, {
+                        method: 'PUT',
+                        body: JSON.stringify({
+                            role: newRole
+                        })
+                    });
+
+                    this.showNotification(`${userName}'s role updated to ${roleNames[newRole]}`, 'success');
+                    await this.loadGroupMembers();
+                    
+                    // If we transferred ownership, reload groups to update our role
+                    if (newRole === 'OWNER') {
+                        await this.loadGroups();
+                    }
+                } catch (error) {
+                    const errorMessage = error.message.toLowerCase();
+                    if (errorMessage.includes('permission')) {
+                        this.showNotification(`You don't have permission to change ${userName}'s role`, 'error');
+                    } else if (errorMessage.includes('owner')) {
+                        this.showNotification(`Cannot change the owner's role`, 'error');
+                    } else if (errorMessage.includes('not a member')) {
+                        this.showNotification(`${userName} is not a member of this group`, 'warning');
+                    } else {
+                        this.showNotification(`Failed to update role: ${error.message}`, 'error');
+                    }
+                }
+            }
+
+            async loadGroupMembers() {
+                if (!this.currentGroup) return;
+
+                try {
+                    const response = await this.apiRequest(`/groups/${this.currentGroup.id}/members`);
+                    const members = response.data;
+                    
+                    const membersList = document.getElementById('membersList');
+                    membersList.innerHTML = '';
+
+                    // Get current user's role in this group
+                    const currentUserMember = members.find(member => member.user.id === this.currentUser.id);
+                    const currentUserRole = currentUserMember ? currentUserMember.role : null;
+                    const canManageRoles = currentUserRole === 'OWNER' || currentUserRole === 'ADMIN';
+
+                    members.forEach(member => {
+                        const isCurrentUser = member.user.id === this.currentUser.id;
+                        const memberEl = document.createElement('div');
+                        memberEl.className = 'member-item';
+                        
+                        // Determine what actions this user can perform on this member
+                        const canRemove = !isCurrentUser && (
+                            currentUserRole === 'OWNER' ||
+                            (currentUserRole === 'ADMIN' && member.role === 'MEMBER')
+                        );
+                        
+                        const canChangeRole = !isCurrentUser && (
+                            currentUserRole === 'OWNER' ||
+                            (currentUserRole === 'ADMIN' && member.role === 'MEMBER')
+                        );
+
+                        let roleDisplay = '';
+                        if (member.role === 'OWNER') {
+                            roleDisplay = '<span class="member-role role-owner">Owner</span>';
+                        } else if (member.role === 'ADMIN') {
+                            roleDisplay = '<span class="member-role role-admin">Admin</span>';
+                        } else {
+                            roleDisplay = '<span class="member-role role-member">Member</span>';
+                        }
+
+                        let actionsHtml = '';
+                        if (isCurrentUser) {
+                            actionsHtml = '<span style="color: #25d366; font-weight: bold;">You</span>';
+                        } else {
+                            let roleActions = '';
+                            if (canChangeRole) {
+                                if (member.role === 'MEMBER') {
+                                    roleActions = `
+                                        <button class="promote-btn" onclick="chatApp.updateMemberRole('${member.user.id}', 'ADMIN', '${member.user.name}')" title="Promote to Admin">
+                                            ↑ Admin
+                                        </button>
+                                    `;
+                                    if (currentUserRole === 'OWNER') {
+                                        roleActions += `
+                                            <button class="promote-btn" onclick="chatApp.updateMemberRole('${member.user.id}', 'OWNER', '${member.user.name}')" title="Promote to Owner" style="background: #ffa000;">
+                                                👑 Owner
+                                            </button>
+                                        `;
+                                    }
+                                } else if (member.role === 'ADMIN' && currentUserRole === 'OWNER') {
+                                    roleActions = `
+                                        <button class="demote-btn" onclick="chatApp.updateMemberRole('${member.user.id}', 'MEMBER', '${member.user.name}')" title="Demote to Member">
+                                            ↓ Member
+                                        </button>
+                                        <button class="promote-btn" onclick="chatApp.updateMemberRole('${member.user.id}', 'OWNER', '${member.user.name}')" title="Promote to Owner" style="background: #ffa000;">
+                                            👑 Owner
+                                        </button>
+                                    `;
+                                }
+                            }
+                            
+                            actionsHtml = `
+                                <div class="member-actions">
+                                    ${roleActions}
+                                    ${canRemove ? `<button class="remove-member-btn" onclick="chatApp.removeMember('${member.user.id}', '${member.user.name}')">Remove</button>` : ''}
+                                </div>
+                            `;
+                        }
+
+                        memberEl.innerHTML = `
+                            <div class="member-info">
+                                <div class="user-avatar">${member.user.name.charAt(0).toUpperCase()}</div>
+                                <div class="member-details">
+                                    <div class="member-name">${member.user.name}</div>
+                                    <div class="member-email">${member.user.email}</div>
+                                    ${roleDisplay}
+                                </div>
+                            </div>
+                            ${actionsHtml}
+                        `;
+                        membersList.appendChild(memberEl);
+                    });
+                } catch (error) {
+                    this.showNotification(`Failed to load members: ${error.message}`, 'error');
+                }
+            }
+
+            async showGroupInfo() {
+                if (!this.currentGroup) return;
+
+                try {
+                    const response = await this.apiRequest(`/groups/${this.currentGroup.id}`);
+                    const group = response.data;
+                    
+                    // Get current user's role for permission checks
+                    const currentUserMember = group.members?.find(member => member.user.id === this.currentUser.id);
+                    const currentUserRole = currentUserMember ? currentUserMember.role : null;
+                    const canEdit = currentUserRole === 'OWNER' || currentUserRole === 'ADMIN';
+                    
+                    // Get role statistics
+                    const roleStats = group.members?.reduce((stats, member) => {
+                        stats[member.role] = (stats[member.role] || 0) + 1;
+                        return stats;
+                    }, {}) || {};
+                    
+                    const content = document.getElementById('groupInfoContent');
+                    content.innerHTML = `
+                        <div class="input-group">
+                            <label>Group Name</label>
+                            <input type="text" id="editGroupName" value="${group.name}" ${!canEdit ? 'disabled' : ''}>
+                        </div>
+                        <div class="input-group">
+                            <label>Description</label>
+                            <input type="text" id="editGroupDescription" value="${group.description || ''}" ${!canEdit ? 'disabled' : ''}>
+                        </div>
+                        <div class="input-group">
+                            <label>
+                                <input type="checkbox" id="editIsPrivate" ${group.isPrivate ? 'checked' : ''} ${!canEdit ? 'disabled' : ''}> Private Group
+                            </label>
+                        </div>
+                        <div style="margin-top: 20px;">
+                            <h4>Group Statistics</h4>
+                            <p><strong>Created:</strong> ${new Date(group.createdAt).toLocaleString()}</p>
+                            <p><strong>Total Members:</strong> ${group.members?.length || 0}</p>
+                            <p><strong>Owners:</strong> ${roleStats.OWNER || 0}</p>
+                            <p><strong>Admins:</strong> ${roleStats.ADMIN || 0}</p>
+                            <p><strong>Members:</strong> ${roleStats.MEMBER || 0}</p>
+                            <p><strong>Your Role:</strong> <span class="member-role role-${currentUserRole?.toLowerCase()}">${currentUserRole || 'Unknown'}</span></p>
+                        </div>
+                        ${canEdit ? `
+                            <div style="margin-top: 20px; display: flex; gap: 10px;">
+                                <button class="btn btn-primary" onclick="chatApp.updateGroupInfo()">Update Group</button>
+                                ${currentUserRole === 'OWNER' ? `
+                                    <button class="btn" style="background: #dc3545; color: white;" onclick="chatApp.deleteGroup()">Delete Group</button>
+                                ` : ''}
+                            </div>
+                        ` : `
+                            <div style="margin-top: 20px; color: #667781; font-style: italic;">
+                                <p>Only owners and admins can edit group information.</p>
+                            </div>
+                        `}
+                    `;
+                    
+                    document.getElementById('groupInfoModal').style.display = 'block';
+                } catch (error) {
+                    this.showNotification(`Failed to load group info: ${error.message}`, 'error');
+                }
+            }
+
+            async updateGroupInfo() {
+                if (!this.currentGroup) return;
+
+                const name = document.getElementById('editGroupName').value.trim();
+                const description = document.getElementById('editGroupDescription').value.trim();
+                const isPrivate = document.getElementById('editIsPrivate').checked;
+
+                try {
+                    await this.apiRequest(`/groups/${this.currentGroup.id}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({
+                            name,
+                            description,
+                            isPrivate
+                        })
+                    });
+
+                    this.showNotification('Group updated successfully!', 'success');
+                    this.hideGroupInfoModal();
+                    await this.loadGroups();
+                    
+                    // Update current group display
+                    if (this.currentGroup.id) {
+                        document.getElementById('currentGroupName').textContent = name;
+                        this.currentGroup.name = name;
+                        this.currentGroup.description = description;
+                        this.currentGroup.isPrivate = isPrivate;
+                    }
+                } catch (error) {
+                    this.showNotification(`Failed to update group: ${error.message}`, 'error');
+                }
+            }
+
+            async deleteGroup() {
+                if (!this.currentGroup) return;
+
+                if (!confirm('Are you sure you want to delete this group? This action cannot be undone.')) {
+                    return;
+                }
+
+                try {
+                    await this.apiRequest(`/groups/${this.currentGroup.id}`, {
+                        method: 'DELETE'
+                    });
+
+                    this.showNotification('Group deleted successfully!', 'success');
+                    this.hideGroupInfoModal();
+                    await this.loadGroups();
+                    
+                    // Clear chat area
+                    document.getElementById('emptyState').style.display = 'flex';
+                    document.getElementById('chatArea').style.display = 'none';
+                    this.currentGroup = null;
+                } catch (error) {
+                    this.showNotification(`Failed to delete group: ${error.message}`, 'error');
+                }
+            }
+
+            async leaveCurrentGroup() {
+                if (!this.currentGroup) return;
+
+                if (!confirm('Are you sure you want to leave this group?')) {
+                    return;
+                }
+
+                try {
+                    // Leave via socket
+                    this.socket.emit('leave_group', this.currentGroup.id);
+                    
+                    // Also remove membership via API (if there's an endpoint for it)
+                    // This would need to be implemented in the backend
+                    
+                    this.showNotification('Left the group', 'success');
+                    await this.loadGroups();
+                    
+                    // Clear chat area
+                    document.getElementById('emptyState').style.display = 'flex';
+                    document.getElementById('chatArea').style.display = 'none';
+                    this.currentGroup = null;
+                } catch (error) {
+                    this.showNotification(`Failed to leave group: ${error.message}`, 'error');
+                }
+            }
+
+            showNotification(message, type = 'success') {
+                const notification = document.createElement('div');
+                notification.className = `notification ${type}`;
+                notification.textContent = message;
+                document.body.appendChild(notification);
+
+                setTimeout(() => {
+                    notification.remove();
+                }, 3000);
+            }
+
+            // Modal functions
+            showCreateGroupModal() {
+                document.getElementById('createGroupModal').style.display = 'block';
+            }
+
+            hideCreateGroupModal() {
+                document.getElementById('createGroupModal').style.display = 'none';
+                document.getElementById('groupName').value = '';
+                document.getElementById('groupDescription').value = '';
+                document.getElementById('isPrivate').checked = false;
+            }
+
+            showGroupInfoModal() {
+                this.showGroupInfo();
+            }
+
+            hideGroupInfoModal() {
+                document.getElementById('groupInfoModal').style.display = 'none';
+            }
+
+            showMembersModal() {
+                this.loadGroupMembers();
+                document.getElementById('membersModal').style.display = 'block';
+            }
+
+            hideMembersModal() {
+                document.getElementById('membersModal').style.display = 'none';
+                document.getElementById('userSearchInput').value = '';
+                document.getElementById('searchResults').innerHTML = '';
+            }
+
+            logout() {
+                if (this.socket) {
+                    this.socket.disconnect();
+                }
+                
+                this.authToken = null;
+                this.currentUser = null;
+                this.currentGroup = null;
+                this.groups = [];
+                
+                document.getElementById('appContainer').style.display = 'none';
+                document.getElementById('loginScreen').style.display = 'flex';
+                
+                // Reset form
+                document.getElementById('authMethod').value = 'token';
+                this.toggleAuthMethod('token');
+                document.getElementById('jwtToken').value = '';
+                document.getElementById('authStatus').textContent = '';
+            }
+        }
+
+        // Initialize the app
+        const chatApp = new ChatApp();
+
+        // Expose global functions for onclick handlers
+        window.showCreateGroupModal = () => chatApp.showCreateGroupModal();
+        window.hideCreateGroupModal = () => chatApp.hideCreateGroupModal();
+        window.createGroup = () => chatApp.createGroup();
+        window.showGroupInfoModal = () => chatApp.showGroupInfoModal();
+        window.hideGroupInfoModal = () => chatApp.hideGroupInfoModal();
+        window.showMembersModal = () => chatApp.showMembersModal();
+        window.hideMembersModal = () => chatApp.hideMembersModal();
+        window.searchUsers = () => chatApp.searchUsers();
+        window.leaveCurrentGroup = () => chatApp.leaveCurrentGroup();
+        window.sendMessage = () => chatApp.sendMessage();
+        window.logout = () => chatApp.logout();
+
+        // Add some initial help text
+        console.log('Chat App Demo loaded! Use the interface to authenticate and start chatting.');
+    </script>
+</body>
+</html>

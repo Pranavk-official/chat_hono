@@ -2,11 +2,14 @@
   "name": "chat_hono",
   "scripts": {
     "dev": "bunx prisma generate && bun run --hot src/index.ts",
-    "start": "bun run src/index.ts",
-    "build": "bunx prisma generate && bun build src/index.ts --outdir=dist --target=bun",
+    "start": "bun run src/server.ts",
+    "build": "bunx prisma generate && bun build src/server.ts --outdir=dist --target=bun",
     "test:auth": "bun run scripts/test-auth.js",
     "test:groups": "bun run scripts/test-groups.js",
-    "test:all": "bun run test:auth && bun run test:groups",
+    "test:chat": "bun run scripts/test-chat.js",
+    "test:rooms": "bun run scripts/test-rooms.js",
+    "test:all": "bun run test:auth && bun run test:groups && bun run test:chat && bun run test:rooms",
+    "seed:users": "bun run scripts/seed-users.js",
     "db:generate": "bunx @better-auth/cli generate",
     "db:migrate": "bunx prisma db push",
     "db:studio": "bunx prisma studio",
@@ -14,13 +17,16 @@
     "db:seed": "bun run prisma/seed.ts"
   },
   "dependencies": {
+    "@hono/node-server": "^1.19.0",
     "@hono/zod-validator": "^0.7.2",
     "@prisma/client": "^6.14.0",
+    "@types/socket.io": "^3.0.2",
     "cloudinary": "^2.7.0",
     "hono": "^4.9.1",
     "ioredis": "^5.7.0",
     "jsonwebtoken": "^9.0.2",
     "resend": "^6.0.1",
+    "socket.io": "^4.8.1",
     "zod": "^4.0.17"
   },
   "devDependencies": {

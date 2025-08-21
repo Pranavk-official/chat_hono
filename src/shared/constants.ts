@@ -18,3 +18,15 @@ export const ALLOWED_IMAGE_MIME_TYPES = [
   "image/png",
   "image/webp",
 ]; // no gif
+
+// Socket.IO Configuration
+export const SOCKET_PORT = process.env.SOCKET_PORT || 8001;
+export const TYPING_TIMEOUT = 10; // seconds
+export const MAX_MESSAGE_LENGTH = 5000;
+export const MAX_MESSAGES_PER_PAGE = 100;
+export const DEFAULT_MESSAGES_PER_PAGE = 50;
+
+// Chat Configuration
+export const CHAT_RATE_LIMIT = 30; // Max messages per minute per user
+export const CHAT_BURST_LIMIT = 5; // Max messages in 10 seconds
+export const CHAT_BLOCK_DURATION = 5 * 60; // 5 minutes in seconds

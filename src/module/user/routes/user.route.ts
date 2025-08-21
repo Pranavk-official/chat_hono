@@ -1,14 +1,26 @@
 import { Hono } from "hono";
 import responder from "@shared/responder";
 import { zValidator } from "@hono/zod-validator";
-import { getUserById, updateUser, deleteUser } from "../services/user.service";
+import {
+  getUserById,
+  updateUser,
+  deleteUser,
+  searchUsers,
+} from "../services/user.service";
 import { updateUserSchema } from "../models/user.model";
-import { v2 as cloudinary } from "cloudinary";
+
 import { uploadImage } from "@utils/upload";
 import { updateUserImage } from "../services/user.service";
 // ...existing imports
 
 const app = new Hono();
+
+// user search route
+app.get("/", async (c) => {
+  const { search } = c.req.query();
+  const data = await searchUsers(search);
+  return c.json(responder(data, { path: c.req.path, message: "User" }), 200);
+});
 
 app.get("/me", async (c) => {
   const user = c.get("user");
@@ -40,8 +52,9 @@ app.delete("/me", async (c) => {
 });
 
 // Upload user image (accepts multipart/form-data field 'image' or JSON { image: base64 })
-app.post("/:userId/image", async (c) => {
-  const { userId } = c.req.param();
+app.post("/image", async (c) => {
+  const user = c.get("user");
+  const userId = user?.id;
   const contentType = c.req.header("content-type") || "";
   let imageInput: any = null;
   let folder = `users/${userId}`;

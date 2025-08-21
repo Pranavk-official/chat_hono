@@ -14,7 +14,7 @@ export const verifySignupSchema = z.object({
 });
 
 export const loginSchema = z.object({
-  identifier: z.email(),
+  email: z.email(),
   otp: z.string().length(6),
 });
 

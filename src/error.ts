@@ -31,6 +31,7 @@ export const errorHandler = (err: Error | HTTPException, c: Context) => {
     }
     console.error("---------------------------------------------");
   }
+  console.error(err);
 
   if (err instanceof ZodError) {
     return c.json(
@@ -99,6 +100,8 @@ export const errorHandler = (err: Error | HTTPException, c: Context) => {
   //       500
   //     );
   //   }
+
+  console.log(err);
 
   return c.json(
     {

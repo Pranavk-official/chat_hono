@@ -14,7 +14,7 @@
  * Usage: bun run scripts/test-auth.js
  */
 
-const BASE_URL = 'http://localhost:3000/api';
+const BASE_URL = 'http://localhost:3000/api/auth';
 const DEV_OTP = '123456'; // Default dev OTP from constants
 
 // ANSI color codes for better output formatting

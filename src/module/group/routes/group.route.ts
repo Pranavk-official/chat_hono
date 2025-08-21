@@ -6,11 +6,15 @@ import {
   listUserGroups,
   updateGroup,
   deleteGroup,
+  addUserToGroup,
+  removeUserFromGroup,
+  updateMemberRole,
 } from "../services";
 import { createGroupSchema, updateGroupSchema } from "../models/group.model";
 import { uploadImage } from "@utils/upload";
 import { updateGroupImage } from "../services";
 import cloudinaryMiddleware from "@middleware/cloudinary.middleware";
+import { group } from "console";
 
 const app = new Hono();
 
@@ -73,6 +77,95 @@ app.delete("/:groupId", async (c) => {
   await deleteGroup(groupId);
   return c.json(
     responder({}, { path: c.req.path, message: "Group deleted" }),
+    200
+  );
+});
+
+app.get("/:groupId/members", async (c) => {
+  const { groupId } = c.req.param();
+  const group = await getGroupById(groupId);
+  if (!group)
+    return c.json({ success: false, message: "Group not found" }, 404);
+  return c.json(
+    responder(group.members, { path: c.req.path, message: "Group members" }),
+    200
+  );
+});
+
+// Add member
+app.post("/:groupId/members", async (c) => {
+  const { groupId } = c.req.param();
+  const body = await c.req.json();
+  const user = (await c.get("user")) as any;
+  if (!user?.id)
+    return c.json({ success: false, message: "Unauthorized" }, 401);
+
+  // Validate required fields
+  if (!body.userId) {
+    return c.json({ success: false, message: "userId is required" }, 400);
+  }
+
+  const requestingUserId = user.id;
+  const result = await addUserToGroup(
+    groupId,
+    body.userId,
+    body.role || "MEMBER"
+  );
+  return c.json(
+    responder(result, { path: c.req.path, message: "Member added" }),
+    201
+  );
+});
+
+// Remove member
+app.delete("/:groupId/members/:userId", async (c) => {
+  const { groupId, userId } = c.req.param();
+  const user = (await c.get("user")) as any;
+  if (!user?.id)
+    return c.json({ success: false, message: "Unauthorized" }, 401);
+
+  const requestingUserId = user.id;
+  const result = await removeUserFromGroup(groupId, userId, requestingUserId);
+  return c.json(
+    responder(result, { path: c.req.path, message: "Member removed" }),
+    200
+  );
+});
+
+// Update member role
+app.put("/:groupId/members/:userId/role", async (c) => {
+  const { groupId, userId } = c.req.param();
+  const body = await c.req.json();
+  const user = (await c.get("user")) as any;
+  if (!user?.id)
+    return c.json({ success: false, message: "Unauthorized" }, 401);
+
+  // Validate required fields
+  if (!body.role) {
+    return c.json({ success: false, message: "role is required" }, 400);
+  }
+
+  // Validate role value
+  const validRoles = ["OWNER", "ADMIN", "MEMBER"];
+  if (!validRoles.includes(body.role)) {
+    return c.json(
+      {
+        success: false,
+        message: "Invalid role. Must be OWNER, ADMIN, or MEMBER",
+      },
+      400
+    );
+  }
+
+  const requestingUserId = user.id;
+  const result = await updateMemberRole(
+    groupId,
+    userId,
+    body.role,
+    requestingUserId
+  );
+  return c.json(
+    responder(result, { path: c.req.path, message: "Member role updated" }),
     200
   );
 });
