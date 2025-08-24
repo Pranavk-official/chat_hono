@@ -13,5 +13,7 @@
       "@shared/*": ["src/shared/*"],
       "@utils/*": ["src/utils/*"]
     }
-  }
+  },
+  "include": ["./"],
+  "exclude": ["node_modules"]
 }

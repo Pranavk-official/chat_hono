@@ -531,7 +531,7 @@ export const registerChatHandlers = (
       const connectedSockets = await io.in(roomName).allSockets();
       const onlineMembers = await RoomManager.getRoomUsers(groupId);
 
-      socket.emit("room_members_update", {
+      socket.emit("room_info", {
         groupId,
         onlineMembers,
         memberCount: connectedSockets.size,

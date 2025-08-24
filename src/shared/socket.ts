@@ -83,6 +83,11 @@ export interface ServerToClientEvents {
     memberCount: number;
   }) => void;
   left_group_success: (data: { groupId: string; memberCount: number }) => void;
+  room_info: (data: {
+    groupId: string;
+    onlineMembers: string[];
+    memberCount: number;
+  }) => void;
   room_members_update: (data: {
     groupId: string;
     onlineMembers: string[];

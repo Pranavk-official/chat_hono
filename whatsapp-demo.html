@@ -274,7 +274,7 @@
         }
 
         .message {
-            max-width: 65%;
+            max-width: 55%;
             margin-bottom: 15px;
             padding: 10px 15px;
             border-radius: 10px;
@@ -286,6 +286,7 @@
             background: #d9fdd3;
             margin-left: auto;
             border-bottom-right-radius: 5px;
+            text-align: justify;
         }
 
         .message.received {
@@ -637,9 +638,9 @@
                         <label>Name</label>
                         <input type="text" id="name" placeholder="Enter your name">
                     </div>
-                    <div class="input-group" id="passwordGroup" style="display: none;">
-                        <label>Password</label>
-                        <input type="password" id="password" placeholder="Enter your password">
+                    <div class="input-group" id="otpGroup" style="display: none;">
+                        <label>OTP</label>
+                        <input type="text" id="otp" placeholder="Enter OTP from console">
                     </div>
                 </div>
 
@@ -801,6 +802,9 @@
                 // Auth method change
                 document.getElementById('authMethod').addEventListener('change', (e) => {
                     this.toggleAuthMethod(e.target.value);
+                    // Reset OTP field and button text on method change
+                    document.getElementById('otpGroup').style.display = 'none';
+                    document.getElementById('authStatus').textContent = '';
                 });
 
                 // Auth submit
@@ -834,25 +838,24 @@
                 const tokenGroup = document.getElementById('tokenInputGroup');
                 const credentialsForm = document.getElementById('credentialsForm');
                 const nameGroup = document.getElementById('nameGroup');
-                const passwordGroup = document.getElementById('passwordGroup');
                 const submitBtn = document.getElementById('authSubmitBtn');
+                const otpGroup = document.getElementById('otpGroup');
+
+                tokenGroup.style.display = 'none';
+                credentialsForm.style.display = 'none';
+                nameGroup.style.display = 'none';
+                otpGroup.style.display = 'none';
 
                 if (method === 'token') {
                     tokenGroup.style.display = 'block';
-                    credentialsForm.style.display = 'none';
                     submitBtn.textContent = 'Connect';
                 } else {
-                    tokenGroup.style.display = 'none';
                     credentialsForm.style.display = 'block';
-                    
                     if (method === 'signup') {
                         nameGroup.style.display = 'block';
-                        passwordGroup.style.display = 'block';
-                        submitBtn.textContent = 'Sign Up';
-                    } else {
-                        nameGroup.style.display = 'none';
-                        passwordGroup.style.display = 'block';
-                        submitBtn.textContent = 'Log In';
+                        submitBtn.textContent = 'Get OTP for Signup';
+                    } else { // login
+                        submitBtn.textContent = 'Get OTP for Login';
                     }
                 }
             }
@@ -860,6 +863,8 @@
             async handleAuth() {
                 const authMethod = document.getElementById('authMethod').value;
                 const statusEl = document.getElementById('authStatus');
+                const submitBtn = document.getElementById('authSubmitBtn');
+                const otpGroupVisible = document.getElementById('otpGroup').style.display === 'block';
                 
                 try {
                     statusEl.textContent = 'Processing...';
@@ -871,50 +876,64 @@
                         }
                         this.authToken = token;
                         await this.verifyTokenAndConnect();
+                    } else if (otpGroupVisible) {
+                        // If OTP field is visible, we are verifying for either login or signup
+                        await this.handleVerifyOtp(authMethod);
                     } else {
-                        await this.handleOTPAuth(authMethod);
+                        // Otherwise, we are generating an OTP
+                        await this.handleGenerateOtp(authMethod);
                     }
                 } catch (error) {
-                    statusEl.textContent = `Error: ${error.message}`;
+                    try {
+                        // Try to parse a JSON error message from the backend
+                        const errorData = JSON.parse(error.message.substring(error.message.indexOf('{')));
+                        statusEl.textContent = `Error: ${errorData.message || 'An unknown error occurred'}`;
+                    } catch (e) {
+                        // Fallback for non-JSON errors
+                        statusEl.textContent = `Error: ${error.message}`;
+                    }
                     statusEl.style.color = '#dc3545';
                 }
             }
 
-            async handleOTPAuth(method) {
+            async handleGenerateOtp(authMethod) {
                 const email = document.getElementById('email').value.trim();
                 const name = document.getElementById('name').value.trim();
-                const password = document.getElementById('password').value.trim();
-                
-                if (!email) throw new Error('Please enter your email');
-                if (method === 'signup' && !name) throw new Error('Please enter your name');
-                if (method === 'login' && !password) throw new Error('Please enter your password');
+                const scope = authMethod.toUpperCase();
 
-                // Generate OTP
-                const otpResponse = await this.apiRequest('/auth/generate-otp', {
+                if (!email) throw new Error('Email is required.');
+                if (authMethod === 'signup' && !name) throw new Error('Name is required for signup.');
+
+                await this.apiRequest('/auth/generate-otp', {
                     method: 'POST',
-                    body: JSON.stringify({
-                        email,
-                        scope: method.toUpperCase()
-                    })
+                    body: JSON.stringify({ email, scope })
                 });
 
-                document.getElementById('authStatus').textContent = 'OTP sent! Using development OTP: 123456';
+                document.getElementById('authStatus').textContent = 'OTP sent! Check console. Using dev OTP: 123456';
+                document.getElementById('otpGroup').style.display = 'block';
+                document.getElementById('authSubmitBtn').textContent = `Verify OTP & ${authMethod === 'signup' ? 'Sign Up' : 'Log In'}`;
+            }
 
-                // Verify OTP (using development OTP)
-                const verifyData = {
-                    email,
-                    otp: '123456',
-                    scope: method.toUpperCase()
-                };
+            async handleVerifyOtp(authMethod) {
+                const email = document.getElementById('email').value.trim();
+                const otp = document.getElementById('otp').value.trim();
+                if (!email || !otp) throw new Error('Email and OTP are required.');
 
-                if (method === 'signup') {
-                    verifyData.userData = { name, password };
+                let authResponse;
+                if (authMethod === 'signup') {
+                    const name = document.getElementById('name').value.trim();
+                    if (!name) throw new Error('Name is required for signup.');
+                    
+                    authResponse = await this.apiRequest('/auth/signup', {
+                        method: 'POST',
+                        body: JSON.stringify({ email, otp, name })
+                    });
+                } else { // login
+                    authResponse = await this.apiRequest('/auth/login', {
+                        method: 'POST',
+                        body: JSON.stringify({ email, otp })
+                    });
                 }
-
-                const authResponse = await this.apiRequest('/auth/verify-otp', {
-                    method: 'POST',
-                    body: JSON.stringify(verifyData)
-                });
 
                 this.authToken = authResponse.data.accessToken;
                 this.currentUser = authResponse.data.user;
@@ -985,6 +1004,12 @@
                     this.addSystemMessage(`${data.userName} left the group`);
                 });
 
+                this.socket.on('group_messages', (data) => {
+                    if (data.messages.length > 0) {
+                        data.messages.forEach(msg => this.displayMessage(msg));
+                    }
+                });
+
                 // Message events
                 this.socket.on('message_received', (message) => {
                     this.displayMessage(message);
@@ -1011,8 +1036,14 @@
                 });
 
                 if (!response.ok) {
-                    const error = await response.text();
-                    throw new Error(`HTTP ${response.status}: ${error}`);
+                    const errorText = await response.text();
+                    // Attempt to parse as JSON, otherwise use the raw text
+                    try {
+                        const errorJson = JSON.parse(errorText);
+                        throw new Error(`HTTP ${response.status}: ${JSON.stringify(errorJson)}`);
+                    } catch (e) {
+                        throw new Error(`HTTP ${response.status}: ${errorText}`);
+                    }
                 }
 
                 return response.json();
@@ -1144,7 +1175,7 @@
                 messageEl.innerHTML = `
                     <div class="message-header">
                         ${!isOwnMessage ? `<span class="sender-name">${message.user.name}</span>` : ''}
-                        <span class="message-time">${timestamp}</span>
+                        <span class="message-time ${isOwnMessage ? 'sent' : ''}">${timestamp}</span>
                     </div>
                     <div class="message-content">${message.content}</div>
                 `;

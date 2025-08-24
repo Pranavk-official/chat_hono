@@ -36,7 +36,7 @@ export const notifyGroupEvent = async (
   actorUserName?: string
 ) => {
   let message = "";
-  
+
   switch (event) {
     case "user_joined":
       message = `${targetUserName} joined the group`;
@@ -56,7 +56,10 @@ export const notifyGroupEvent = async (
 };
 
 // Utility to format message content for display
-export const formatMessageContent = (content: string, type: MessageType): string => {
+export const formatMessageContent = (
+  content: string,
+  type: MessageType
+): string => {
   switch (type) {
     case MessageType.IMAGE:
       return "📷 Image";
@@ -71,7 +74,10 @@ export const formatMessageContent = (content: string, type: MessageType): string
 };
 
 // Utility to validate message content
-export const validateMessageContent = (content: string, type: MessageType): boolean => {
+export const validateMessageContent = (
+  content: string,
+  type: MessageType
+): boolean => {
   if (!content || typeof content !== "string") {
     return false;
   }
@@ -90,9 +96,11 @@ export const validateMessageContent = (content: string, type: MessageType): bool
 };
 
 // Utility to check if user is online
-export const checkUserOnlineStatus = async (userIds: string[]): Promise<Record<string, boolean>> => {
+export const checkUserOnlineStatus = async (
+  userIds: string[]
+): Promise<Record<string, boolean>> => {
   const { isUserOnline } = await import("@shared/socket");
-  
+
   const statusPromises = userIds.map(async (userId) => {
     const online = await isUserOnline(userId);
     return [userId, online] as const;
@@ -103,9 +111,13 @@ export const checkUserOnlineStatus = async (userIds: string[]): Promise<Record<s
 };
 
 // Utility to get group online members count
-export const getGroupOnlineMembersCount = async (groupId: string): Promise<number> => {
-  const { getGroupMembers } = await import("@module/group/services/chat.service");
-  
+export const getGroupOnlineMembersCount = async (
+  groupId: string
+): Promise<number> => {
+  const { getGroupMembers } = await import(
+    "@module/group/services/chat.service"
+  );
+
   try {
     // This is a simplified version - in practice, you'd need a userId to verify access
     // For now, we'll just return 0 as this requires proper context
@@ -130,11 +142,11 @@ export const extractMentions = (content: string): string[] => {
   const mentionRegex = /@(\w+)/g;
   const mentions = [];
   let match;
-  
+
   while ((match = mentionRegex.exec(content)) !== null) {
     mentions.push(match[1]);
   }
-  
+
   return mentions;
 };
 
@@ -148,6 +160,8 @@ export const notifyMentionedUsers = async (
   for (const mention of mentions) {
     // In a real implementation, you'd look up the user ID by username
     // and send a notification
-    console.log(`User @${mention} was mentioned in group ${groupId} by ${senderName}`);
+    console.log(
+      `User @${mention} was mentioned in group ${groupId} by ${senderName}`
+    );
   }
 };

@@ -165,23 +165,20 @@ export const getGroupMessages = async (
   // Verify user has access to the group
   await verifyGroupAccess(userId, groupId);
 
-  const whereClause: any = {
-    groupId,
-  };
-
-  // Add cursor-based pagination
-  if (cursor) {
-    whereClause.id = {
-      lt: cursor, // Get messages before this cursor (older messages)
-    };
-  }
-
   const messages = await prisma.message.findMany({
-    where: whereClause,
-    orderBy: {
-      createdAt: "desc", // Most recent first
+    where: {
+      groupId,
     },
     take: limit + 1, // Take one extra to check if there are more
+    ...(cursor && {
+      skip: 1, // Do not include the cursor itself in the result
+      cursor: {
+        id: cursor,
+      },
+    }),
+    orderBy: {
+      createdAt: "desc", // Get messages from newest to oldest
+    },
     include: {
       user: {
         select: {
@@ -221,13 +218,13 @@ export const getGroupMessages = async (
     messages.pop(); // Remove the extra message
   }
 
-  // Get the next cursor (last message id)
+  // Get the next cursor (last message id in the current batch)
   const nextCursor =
     hasNextPage && messages.length > 0
       ? messages[messages.length - 1].id
       : undefined;
 
-  // Reverse to get chronological order (oldest to newest)
+  // Reverse to get chronological order (oldest to newest) for the client
   const reversedMessages = messages.reverse();
 
   return {
@@ -484,7 +481,6 @@ export const getGroupMembers = async (groupId: string, userId: string) => {
           name: true,
           email: true,
           image: true,
-          role: true,
         },
       },
     },

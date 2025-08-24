@@ -2,12 +2,13 @@
 
 ## Architecture Overview
 
-This is a **Hono + Bun + Prisma + PostgreSQL** chat application backend with OTP-based authentication. The architecture follows a modular pattern with clear separation of concerns.
+This is a **Hono + Bun + Prisma + PostgreSQL** chat application backend with real-time capabilities via Socket.IO and OTP-based authentication. The architecture follows a modular pattern with clear separation of concerns.
 
 ### Core Stack
 
 - **Runtime**: Bun (not Node.js) - use `bun run` commands, not `npm`
 - **Framework**: Hono (lightweight Express alternative)
+- **Real-time**: Socket.IO for WebSocket communication
 - **Database**: PostgreSQL via Prisma ORM with multi-schema setup
 - **Cache**: Redis for rate limiting and session management
 - **Auth**: Custom JWT + OTP system (no third-party auth library)
@@ -24,6 +25,8 @@ bunx prisma studio         # Visual database browser
 ```
 
 ### Testing
+
+The test scripts in `/scripts/` are the best way to understand API workflows.
 
 ```bash
 bun run test:auth          # Comprehensive auth flow testing
@@ -44,11 +47,11 @@ bun run test:all           # Run all test suites
 Each feature module follows this pattern:
 
 ```
-auth/
-├── models/        # Zod schemas for validation
-├── routes/        # Hono route handlers
+group/
+├── models/        # Zod schemas for API validation
+├── routes/        # Hono route handlers (REST API)
 ├── services/      # Business logic (database operations)
-└── utils/         # Module-specific utilities
+└── utils/         # Module-specific utilities (e.g., socket.handlers.ts)
 ```
 
 ### Path Aliases (tsconfig.json)
@@ -64,108 +67,63 @@ import { BadRequestError } from "@shared/error";
 
 ### OTP-Based Flow
 
-1. Generate OTP with scope (`SIGNUP` or `LOGIN`)
-2. Verify OTP to get access/refresh tokens
-3. Use Bearer tokens for protected routes
+1.  Generate OTP with scope (`SIGNUP` or `LOGIN`) via `POST /api/auth/generate-otp`.
+2.  Verify OTP to get access/refresh tokens via `POST /api/auth/signup` or `POST /api/auth/login`.
+3.  Use Bearer tokens for protected REST routes.
+4.  For Socket.IO, the token is sent in the `auth.token` payload during connection.
 
 ### Middleware Pattern
 
-```typescript
-// Global auth middleware applied after /api/ routes
-app.route("/api/", auth_routes); // Unprotected auth endpoints
-app.use(authMiddleware); // Protects all routes below
-app.route("/api/users", user_routes);
-app.route("/api/groups", group_routes);
-```
+- **REST API**: Global auth middleware `authMiddleware` is applied after the public `/api/auth` routes. See `src/server.ts`.
+- **Socket.IO**: Socket authentication is handled by `socketAuthMiddleware` in `src/middleware/socket.auth.ts`, which runs on every new connection.
 
-### Rate Limiting
+## Real-time & Socket.IO
 
-Uses Redis for sophisticated rate limiting:
-
-- Per-user OTP limits (5/minute, 10min block)
-- Per-IP limits (15/minute, 1hr block)
-- Check `@shared/constants.ts` for current limits
+- **Server Setup**: The core Socket.IO server is initialized in `src/shared/socket.ts`.
+- **Authentication**: New socket connections are authenticated using the JWT token via `socketAuthMiddleware`.
+- **Event Handlers**: Business logic for socket events is organized by feature in module `utils` directories. For example, group-related events are in `src/module/group/utils/socket.handlers.ts`.
+- **Room Management**: The application uses Socket.IO rooms for group chats.
 
 ## Error Handling Conventions
 
 ### Custom Error Classes
 
-Always throw typed errors, never generic `Error`:
+Always throw typed errors from `@shared/error`, never generic `Error`. The global error handler in `src/server.ts` will format the response.
 
 ```typescript
-import {
-  BadRequestError,
-  NotFoundError,
-  UnauthorizedError,
-} from "@shared/error";
-
-// Bad
-throw new Error("User not found");
-
-// Good
+import { NotFoundError } from "@shared/error";
 throw new NotFoundError("User not found");
 ```
 
 ### Response Format
 
-All successful responses use the `responder` utility:
+All successful REST responses use the `responder` utility for a consistent structure.
 
 ```typescript
 import responder from "@shared/responder";
-
-return c.json(
-  responder(data, {
-    message: "Group created",
-    path: c.req.path,
-  })
-);
-```
-
-## Database Schema Notes
-
-### Multi-Schema Setup
-
-All models use `@@schema("user")` - this is intentional for the multi-tenant architecture.
-
-### Key Relationships
-
-- `User` → `Session` (1:many, cascade delete)
-- `Group` → `GroupMember` (1:many with role-based access)
-- `Message` → `Message` (self-referencing for replies)
-- `Message` → `Attachment` (1:many, cascade delete)
-
-### Enum Usage
-
-```typescript
-// Always use Prisma enums, not string literals
-role: GroupMemberRole.ADMIN; // Not "ADMIN"
-type: MessageType.IMAGE; // Not "IMAGE"
+return c.json(responder(data, { message: "Group created" }));
 ```
 
 ## Development Environment
 
 ### Environment Variables
 
-- Uses development OTP (`123456`) when `NODE_ENV=development`
-- Requires Redis and PostgreSQL connections
-- Cloudinary for image uploads (optional)
+- Uses a development OTP (`123456`) when `NODE_ENV=development`.
+- Requires Redis and PostgreSQL connections.
+- Cloudinary for image uploads is optional.
 
 ### Hot Reload
 
-`bun run dev` includes Prisma generation + hot reload. Always use this for development, not `bun run src/index.ts`.
+`bun run dev` includes Prisma generation + hot reload. Always use this for development.
 
-## Testing Philosophy
+### Frontend Demo Client
 
-Tests are **integration tests** that verify complete workflows:
-
-- Auth tests: OTP generation → signup → login → token refresh → logout
-- Group tests: Auth setup → CRUD operations → cleanup
-- Use the test scripts in `/scripts/` as API documentation examples
+Use `whatsapp-demo.html` in the root directory to manually test the full application flow, including authentication, group management, and real-time chat, in a browser.
 
 ## Common Patterns to Follow
 
-1. **Validation**: Always use Zod schemas from `/models/` files
-2. **Services**: Keep route handlers thin, business logic in `/services/`
-3. **Error responses**: Use typed error classes + global error handler
-4. **Success responses**: Always use `responder()` utility for consistency
-5. **Authentication**: Check `c.get("user")` for authenticated user context
+1.  **Validation**: Always use Zod schemas from `/models/` files for all API inputs.
+2.  **Services**: Keep route handlers thin. All business logic and database interaction goes in `/services/`.
+3.  **Error Responses**: Use typed error classes.
+4.  **Success Responses**: Use the `responder()` utility for all successful REST responses.
+5.  **Authentication**: Access the authenticated user in Hono contexts via `c.get("user")` and in socket instances via `socket.user`.

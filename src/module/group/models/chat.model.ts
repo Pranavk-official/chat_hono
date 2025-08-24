@@ -3,7 +3,10 @@ import { MessageType } from "@prisma/client";
 
 // Message creation schema
 export const createMessageSchema = z.object({
-  content: z.string().min(1, "Message content cannot be empty").max(5000, "Message too long"),
+  content: z
+    .string()
+    .min(1, "Message content cannot be empty")
+    .max(5000, "Message too long"),
   type: z.nativeEnum(MessageType).default(MessageType.TEXT),
   groupId: z.string().cuid("Invalid group ID"),
   replyToId: z.string().cuid("Invalid reply message ID").optional(),
@@ -11,7 +14,10 @@ export const createMessageSchema = z.object({
 
 // Message update schema (only content can be updated)
 export const updateMessageSchema = z.object({
-  content: z.string().min(1, "Message content cannot be empty").max(5000, "Message too long"),
+  content: z
+    .string()
+    .min(1, "Message content cannot be empty")
+    .max(5000, "Message too long"),
 });
 
 // Get messages schema (for query params)
@@ -37,7 +43,10 @@ export const joinGroupSchema = z.object({
 
 export const sendMessageSocketSchema = z.object({
   groupId: z.string().cuid("Invalid group ID"),
-  content: z.string().min(1, "Message content cannot be empty").max(5000, "Message too long"),
+  content: z
+    .string()
+    .min(1, "Message content cannot be empty")
+    .max(5000, "Message too long"),
   type: z.nativeEnum(MessageType).optional(),
   replyToId: z.string().cuid("Invalid reply message ID").optional(),
 });
@@ -50,6 +59,10 @@ export const getGroupMessagesSocketSchema = z.object({
   groupId: z.string().cuid("Invalid group ID"),
   limit: z.number().min(1).max(100).optional(),
   cursor: z.string().cuid().optional(),
+});
+
+export const getRoomInfoSchema = z.object({
+  groupId: z.string().cuid("Invalid group ID"),
 });
 
 // File upload schema
@@ -68,5 +81,8 @@ export type RemoveMemberRequest = z.infer<typeof removeMemberSchema>;
 export type JoinGroupRequest = z.infer<typeof joinGroupSchema>;
 export type SendMessageSocketRequest = z.infer<typeof sendMessageSocketSchema>;
 export type TypingEventRequest = z.infer<typeof typingEventSchema>;
-export type GetGroupMessagesSocketRequest = z.infer<typeof getGroupMessagesSocketSchema>;
+export type GetGroupMessagesSocketRequest = z.infer<
+  typeof getGroupMessagesSocketSchema
+>;
+export type GetRoomInfoRequest = z.infer<typeof getRoomInfoSchema>;
 export type UploadAttachmentRequest = z.infer<typeof uploadAttachmentSchema>;
